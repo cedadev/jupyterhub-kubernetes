@@ -30,7 +30,7 @@ Vagrant.configure(2) do |config|
 
       if n == N_NODES
         node.vm.provision :ansible do |ansible|
-          ansible.playbook = "kubernetes/playbook.yml"
+          ansible.playbook = "jupyterhub/playbook.yml"
           ansible.limit = "all"
           ansible.force_remote_user = false
           ansible.groups = {
