@@ -15,6 +15,6 @@ $ vagrant up
 To access `kubectl` on the master, just use:
 
 ```
-$ vagrant ssh master -- -l root
+$ vagrant ssh kube-master -- -l root
 [root@master ~]# kubectl ...
 ```

@@ -1,2 +1,3 @@
 .vagrant
 playbook.retry
+dockerhub_credentials.yml

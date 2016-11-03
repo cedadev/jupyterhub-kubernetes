@@ -18,12 +18,16 @@ Vagrant.configure(2) do |config|
   cp ~vagrant/.ssh/authorized_keys /root/.ssh
   SHELL
 
-  config.vm.define "master" do |consul|
-    consul.vm.hostname = "master"
+  config.vm.define "nfs-server" do |nfs|
+    nfs.vm.hostname = "nfs-server"
+  end
+
+  config.vm.define "kube-master" do |master|
+    master.vm.hostname = "kube-master"
   end
 
   N_NODES = 2
-  node_names = (1..N_NODES).map { |n| "node%02d" % n }
+  node_names = (1..N_NODES).map { |n| "kube-node%02d" % n }
   (1..N_NODES).zip(node_names).each do |n, node_name|
     config.vm.define node_name do |node|
       node.vm.hostname = node_name
@@ -34,10 +38,11 @@ Vagrant.configure(2) do |config|
           ansible.limit = "all"
           ansible.force_remote_user = false
           ansible.groups = {
-            "kube_masters"  => ["master"],
+            "nfs_servers" => ["nfs-server"],
+            "kube_masters"  => ["kube-master"],
             "kube_nodes" => node_names,
             "kube_hosts:children" => ["kube_masters", "kube_nodes"],
-            "vagrant_hosts:children" => ["kube_hosts"],
+            "vagrant_hosts:children" => ["nfs_servers", "kube_hosts"],
           }
           ansible.extra_vars = {
             "cluster_interface" => "enp0s8",

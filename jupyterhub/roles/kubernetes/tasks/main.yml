@@ -65,6 +65,8 @@
 
 - name: Join Kubernetes cluster
   command: kubeadm join --token={{ kubeadm_token }} {{ kube_master_ip }}
+  register: kubeadm_join
+  failed_when: "kubeadm_join.rc != 0 and '[open /etc/kubernetes/kubelet.conf: file exists]' not in kubeadm_join.stderr"
   when: kube_role == 'node'
 
 - name: Install pod network
