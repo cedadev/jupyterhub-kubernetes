@@ -1,3 +1,4 @@
 .vagrant
-playbook.retry
-dockerhub_credentials.yml
+*.retry
+.dockerhub-credentials.yml
+venv

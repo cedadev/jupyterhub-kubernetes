@@ -1,0 +1,80 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: jupyterhub
+  labels:
+    app: jupyterhub
+spec:
+  ports:
+    - protocol: TCP
+      port: 8000
+  selector:
+    app: jupyterhub
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jupyterhub-config
+data:
+  jupyterhub-config.py: |-
+    import os
+    c.JupyterHub.confirm_no_ssl = True
+    c.JupyterHub.spawner_class = 'kubespawner.KubeSpawner'
+    c.KubeSpawner.namespace = os.environ.get('POD_NAMESPACE', 'default')
+    c.KubeSpawner.start_timeout = 60 * 5  # Upto 5 minutes, first pulls can be really slow
+    c.KubeSpawner.hub_connect_ip = os.environ['JUPYTERHUB_SERVICE_HOST']
+    c.KubeSpawner.hub_connect_port = int(os.environ['JUPYTERHUB_SERVICE_PORT'])
+    c.KubeSpawner.singleuser_image_spec = '{{ singleuser_image_name }}'
+    # Each user gets their own persistentVolumeClaim
+    c.KubeSpawner.user_storage_capacity = '100Mi'
+    c.KubeSpawner.user_storage_class = 'notebook-storage'
+    c.KubeSpawner.volumes = [{
+        'name' : 'notebook-volume',
+        'persistentVolumeClaim' : {
+            'claimName' : 'claim-{username}-{userid}',
+        },
+    }]
+    c.KubeSpawner.volume_mounts = [{
+        'name' : 'notebook-volume',
+        'mountPath' : '/home/jovyan/work',
+    }]
+    # Do not use any authentication
+    c.JupyterHub.authenticator_class = 'dummyauthenticator.DummyAuthenticator'
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: jupyterhub
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: jupyterhub
+    spec:
+      containers:
+        - name: jupyterhub
+          image: {{ jupyterhub_image_name }}
+          command:
+            - jupyterhub
+            - --config
+            - /srv/jupyterhub/conf/jupyterhub_config.py
+            - --no-ssl
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          ports:
+            - name: proxy
+              containerPort: 8000
+          volumeMounts:
+            - name: config-volume
+              mountPath: /srv/jupyterhub/conf/
+      volumes:
+        - name: config-volume
+          configMap:
+            name: jupyterhub-config
+            items:
+              - key: jupyterhub-config.py
+                path: jupyterhub_config.py

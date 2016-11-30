@@ -1,2 +1,0 @@
-hub_container_name: "{{ dockerhub_username }}/jupyterhub"
-hub_container_tag: 0.1

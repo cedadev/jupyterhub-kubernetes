@@ -2,10 +2,7 @@
 # vi: set ft=ruby :
 
 Vagrant.configure(2) do |config|
-  config.vm.box = "geerlingguy/centos7"
-
-  # Use a dhcp allocated private network for cluster comms
-  config.vm.network :private_network, type: "dhcp"
+  config.vm.box = "wholebits/centos7"
 
   config.vm.provider :virtualbox do |vb|
     vb.customize ["modifyvm", :id, "--memory", "2048"]
@@ -18,34 +15,43 @@ Vagrant.configure(2) do |config|
   cp ~vagrant/.ssh/authorized_keys /root/.ssh
   SHELL
 
-  config.vm.define "nfs-server" do |nfs|
-    nfs.vm.hostname = "nfs-server"
-  end
-
-  config.vm.define "kube-master" do |master|
-    master.vm.hostname = "kube-master"
-  end
-
-  N_NODES = 2
-  node_names = (1..N_NODES).map { |n| "kube-node%02d" % n }
-  (1..N_NODES).zip(node_names).each do |n, node_name|
+  N_NODES = 3
+  (0..N_NODES-1).each do |n|
+    node_name = "kube-node%d" % n
     config.vm.define node_name do |node|
       node.vm.hostname = node_name
+      node.vm.network "private_network", ip: "172.28.128.%s" % (101 + n)
 
-      if n == N_NODES
-        node.vm.provision :ansible do |ansible|
-          ansible.playbook = "jupyterhub/playbook.yml"
+      if n == (N_NODES-1)
+        # On the final node (i.e. when all the machines in the cluster have started)
+        # we run the cluster setup playbook
+        node.vm.provision "ansible-kube-cluster", type: "ansible" do |ansible|
+          ansible.playbook = "ansible/cluster.yml"
           ansible.limit = "all"
           ansible.force_remote_user = false
-          ansible.groups = {
-            "nfs_servers" => ["nfs-server"],
-            "kube_masters"  => ["kube-master"],
-            "kube_nodes" => node_names,
-            "kube_hosts:children" => ["kube_masters", "kube_nodes"],
-            "vagrant_hosts:children" => ["nfs_servers", "kube_hosts"],
-          }
           ansible.extra_vars = {
-            "cluster_interface" => "enp0s8",
+            "cluster_interface" => "eth1",
+          }
+          ansible.groups = {
+            "kube_masters"  => ["kube-node0"],
+            "kube_nodes" => (1..N_NODES-1).map { |n| "kube-node%d" % n },
+            "kube_hosts:children" => ["kube_masters", "kube_nodes"],
+            "vagrant_hosts:children" => ["kube_hosts"],
+          }
+        end
+        # Do JupyterHub-specific configuration
+        node.vm.provision "ansible-jupyterhub-k8s", type: "ansible" do |ansible|
+          ansible.playbook = "ansible/jupyterhub_k8s.yml"
+          ansible.limit = "all"
+          ansible.force_remote_user = false
+          ansible.extra_vars = {
+            "cluster_interface" => "eth1",
+          }
+          ansible.groups = {
+            "kube_masters"  => ["kube-node0"],
+            "kube_nodes" => (1..N_NODES-1).map { |n| "kube-node%d" % n },
+            "kube_hosts:children" => ["kube_masters", "kube_nodes"],
+            "vagrant_hosts:children" => ["kube_hosts"],
           }
         end
       end

@@ -1,0 +1,9 @@
+---
+# This playbook builds Docker container images and places the Kubernetes manifests
+# for JupyterHub onto the master node
+
+- hosts: kube_hosts
+  remote_user: root
+  force_handlers: yes
+  roles:
+    - jupyterhub_k8s

@@ -1,9 +1,0 @@
-FROM jupyterhub/jupyterhub-onbuild
-
-RUN apt-get update
-RUN pip install --upgrade pip
-
-RUN pip install jupyterhub-dummyauthenticator
-RUN pip install git+https://github.com/yuvipanda/jupyterhub-kubernetes-spawner.git
-
-CMD jupyterhub --config /srv/jupyterhub/jupyterhub_config.py --no-ssl
