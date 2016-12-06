@@ -44,7 +44,7 @@ To discover the port on which the Kubernetes Dashboard is running, use the follo
 [root@kube-node0 ~]# kubectl describe svc kubernetes-dashboard -n kube-system | grep NodePort:
 ```
 
-The dashboard will then be accessible via that port in a browser on the host, e.g. http://172.28.128.101:<port>.
+The dashboard will then be accessible via that port in a browser on the host, e.g. http://172.28.128.101:{port}.
 
 When bringing the cluster up, the Kubernetes manifest files for the various JupyterHub
 components are copied to the Kubernetes master (`kube-node0`), with some templating of
@@ -54,20 +54,35 @@ To start JupyterHub, these components must be started in a specific order:
 
 ```
 [root@kube-node0 ~]# cd ~/manifests
-[root@kube-node0 manifests]# kubectl create -f nfs-notebook-storage.yml
+[root@kube-node0 manifests]# kubectl create -f nfs-notebook-storage.yml -f hub-service.yml -f nginx-proxy-nodeport.yml -f nginx-proxy-deployment.yml
 service "nfs-provisioner" created
 deployment "nfs-provisioner" created
 storageclass "notebook-storage" created
-[root@kube-node0 manifests]# kubectl create -f hub-service.yml
 service "jupyterhub" created
 configmap "jupyterhub-config" created
 deployment "jupyterhub" created
-[root@kube-node0 manifests]# kubectl create -f nginx-proxy-nodeport.yml
 service "nginx-proxy" created
-[root@kube-node0 manifests]# kubectl create -f nginx-proxy-deployment.yml
 secret "nginx-ssl-cert" created
 configmap "nginx-conf" created
 deployment "nginx-proxy" created
 ```
 
 Once all the pods have started, JupyterHub will be available at https://172.28.128.101:31443.
+
+## Authentication using CEDA OAuth Server
+
+By default, JupyterHub will use the [dummy authenticator](https://github.com/yuvipanda/jupyterhub-dummy-authenticator),
+which means any username/password combination is allowed.
+
+To enable authentication with CEDA accounts using OAuth, you will first need to get
+a client ID and client secret from CEDA. Then add the following lines to an appropriate
+`host_vars` or `group_vars` file (e.g. `ansible/group_vars/vagrant_hosts`):
+
+```
+jupyterhub_image_name: jupyterhub-kubernetes-ceda-oauth
+ceda_oauth_client_id: <client id>
+ceda_oauth_client_secret: <client secret>
+```
+
+When you provision the cluster, the manifest files will be created on `kube-node0`
+with appropriate settings to use the CEDA OAuth Server for authentication.

@@ -5,5 +5,4 @@ server_name: "{{ hostvars[groups['kube_masters'][0]]['ansible_' + cluster_interf
 use_self_signed_ssl_cert: true
 ssl_cert_subject: /C=GB/ST=Oxfordshire/L=Didcot/O=Science and Technology Facilities Council/OU=Centre for Environmental Data Analysis/CN={{ server_name }}
 
-build_jupyterhub_image: false
 https_port: 31443

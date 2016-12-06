@@ -1,47 +1,17 @@
 ---
 # Setup tasks for JupyterHub on Kubernetes
 
-- name: Set jupyterhub_k8s_dir fact
-  set_fact:
-    jupyterhub_k8s_dir: "{{ playbook_dir }}/../jupyterhub_k8s"
-
 - name: Install pip for system Python
   yum: name=python-pip state=latest
 
 - name: Install docker-py
   pip: name=docker-py state=latest
 
-- name: Include DockerHub credentials
-  include_vars: file="{{ lookup('env', 'DOCKERHUB_CREDS_FILE')|default(playbook_dir + '/.dockerhub-credentials.yml', true) }}"
-  when: kube_role == 'master' and build_jupyterhub_image
-
-- name: Log in to DockerHub
-  docker_login:
-    username: "{{ dockerhub_username }}"
-    password: "{{ dockerhub_password }}"
-    email: "{{ dockerhub_email }}"
-  when: kube_role == 'master' and build_jupyterhub_image
-
-- name: Create docker_build directory
-  file: path=/root/docker_build state=directory
-  when: kube_role == 'master' and build_jupyterhub_image
-
-- name: Copy Dockerfile to docker_build directory
-  copy: src={{ jupyterhub_k8s_dir }}/Dockerfile dest=/root/docker_build/Dockerfile
-  when: kube_role == 'master' and build_jupyterhub_image
-  register: dockerfile
-
-- name: Build Docker image for JupyterHub
-  docker_image:
-    name: "{{ jupyterhub_image_name }}"
-    path: /root/docker_build
-    state: present
-    push: yes
-  when: kube_role == 'master' and build_jupyterhub_image and dockerfile|changed
-
-- name: Pre-pull jupyterhub/singleuser image onto nodes
-  docker_image:
-    name: "{{ singleuser_image_name }}"
+- name: Pre-pull Docker images onto nodes
+  docker_image: name={{ item }}
+  with_items:
+    - "{{ jupyterhub_image }}"
+    - "{{ singleuser_image }}"
   when: kube_role == 'node'
 
 - name: Create certs directory
@@ -77,10 +47,7 @@
   when: kube_role == 'master'
 
 - name: Copy manifest files
-  template: src={{ jupyterhub_k8s_dir }}/{{ item }} dest=/root/manifests/{{ item }} mode="u=rw,g=,o="
-  with_items:
-    - nfs-notebook-storage.yml
-    - hub-service.yml
-    - nginx-proxy-nodeport.yml
-    - nginx-proxy-deployment.yml
+  template: src={{ item }} dest=/root/manifests/ mode="u=rw,g=,o="
+  with_fileglob:
+    - "{{ playbook_dir }}/../jupyterhub_k8s/*.yml"
   when: kube_role == 'master'

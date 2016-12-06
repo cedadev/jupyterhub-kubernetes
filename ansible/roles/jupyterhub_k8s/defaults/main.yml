@@ -1,8 +1,6 @@
-
-
-jupyterhub_image_name: mkjpryor/jupyterhub-jasmin
-build_jupyterhub_image: false
-
-singleuser_image_name: jupyterhub/singleuser:0.5.0
+jupyterhub_image_prefix: mkjpryor
+jupyterhub_image_name: jupyterhub-kubernetes-noauth
+jupyterhub_image: "{{ jupyterhub_image_prefix }}/{{ jupyterhub_image_name }}"
+singleuser_image: jupyterhub/singleuser:0.5.0
 
 https_port: ""

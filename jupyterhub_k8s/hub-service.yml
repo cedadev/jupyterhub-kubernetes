@@ -18,13 +18,13 @@ metadata:
 data:
   jupyterhub-config.py: |-
     import os
-    c.JupyterHub.confirm_no_ssl = True
+
     c.JupyterHub.spawner_class = 'kubespawner.KubeSpawner'
     c.KubeSpawner.namespace = os.environ.get('POD_NAMESPACE', 'default')
     c.KubeSpawner.start_timeout = 60 * 5  # Upto 5 minutes, first pulls can be really slow
     c.KubeSpawner.hub_connect_ip = os.environ['JUPYTERHUB_SERVICE_HOST']
     c.KubeSpawner.hub_connect_port = int(os.environ['JUPYTERHUB_SERVICE_PORT'])
-    c.KubeSpawner.singleuser_image_spec = '{{ singleuser_image_name }}'
+    c.KubeSpawner.singleuser_image_spec = '{{ singleuser_image }}'
     # Each user gets their own persistentVolumeClaim
     c.KubeSpawner.user_storage_capacity = '100Mi'
     c.KubeSpawner.user_storage_class = 'notebook-storage'
@@ -38,9 +38,27 @@ data:
         'name' : 'notebook-volume',
         'mountPath' : '/home/jovyan/work',
     }]
-    # Do not use any authentication
+
+{% if jupyterhub_image_name == "jupyterhub-kubernetes-ceda-oauth" %}
+    c.JupyterHub.authenticator_class = 'jupyterhub_ceda_auth.CedaOAuthenticator'
+    c.CedaOAuthenticator.oauth_callback_url = 'https://{{ server_name }}{% if https_port %}:{{ https_port }}{% endif %}/hub/oauth_callback'
+    c.CedaOAuthenticator.client_id = os.environ['CEDA_OAUTH_CLIENT_ID']
+    c.CedaOAuthenticator.client_secret = os.environ['CEDA_OAUTH_CLIENT_SECRET']
+{% else %}
     c.JupyterHub.authenticator_class = 'dummyauthenticator.DummyAuthenticator'
+{% endif %}
 ---
+{% if jupyterhub_image_name == "jupyterhub-kubernetes-ceda-oauth" %}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ceda-oauth-creds
+type: Opaque
+data:
+  client_id: {{ ceda_oauth_client_id|b64encode }}
+  client_secret: {{ ceda_oauth_client_secret|b64encode }}
+---
+{% endif %}
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
@@ -54,7 +72,7 @@ spec:
     spec:
       containers:
         - name: jupyterhub
-          image: {{ jupyterhub_image_name }}
+          image: {{ jupyterhub_image }}
           command:
             - jupyterhub
             - --config
@@ -65,6 +83,18 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+{% if jupyterhub_image_name == "jupyterhub-kubernetes-ceda-oauth" %}
+            - name: CEDA_OAUTH_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: ceda-oauth-creds
+                  key: client_id
+            - name: CEDA_OAUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: ceda-oauth-creds
+                  key: client_secret
+{% endif %}
           ports:
             - name: proxy
               containerPort: 8000
