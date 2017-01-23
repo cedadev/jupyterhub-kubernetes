@@ -1,26 +1,8 @@
 ---
 # This role performs tasks common to all hosts in a Kubernetes cluster
 
-- name: Disable SELinux
-  selinux: state=disabled
-
 - name: Install NFS utils
-  yum: name=nfs-utils state=latest
-
-- name: Create iptables reset file on host
-  copy:
-    content: |
-      *filter
-      :INPUT ACCEPT [0:0]
-      :FORWARD ACCEPT [0:0]
-      :OUTPUT ACCEPT [0:0]
-      COMMIT
-    dest: /root/iptables-reset
-  register: reset_req
-
-- name: Reset iptables config
-  shell: iptables-restore < /root/iptables-reset
-  when: reset_req|changed
+  apt: update_cache=yes name=nfs-common state=latest
 
 - name: Remove hostname <-> 127.0.0.1 mapping from /etc/hosts
   lineinfile: >
@@ -37,37 +19,26 @@
     insertbefore: BOF
   with_items: "{{ groups['kube_hosts'] }}"
 
+- name: Add apt repository key for Kubernetes repo
+  apt_key:
+    url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+    state: present
+
 - name: Install Kubernetes repo
   copy:
-    dest: /etc/yum.repos.d/kubernetes.repo
+    dest: /etc/apt/sources.list.d/kubernetes.list
     content: |
-      [kubernetes]
-      name=Kubernetes
-      baseurl=http://yum.kubernetes.io/repos/kubernetes-el7-x86_64
-      enabled=1
-      gpgcheck=1
-      repo_gpgcheck=1
-      gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg
-             https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
-
-- name: Enable EPEL
-  yum: name=epel-release state=latest
+      deb http://apt.kubernetes.io/ kubernetes-xenial main
 
 - name: Install Docker and Kubernetes
-  yum: name={{ item }} state=latest
+  apt: update_cache=yes name={{ item }} state=latest
   with_items:
     - jq
-    - docker
+    - docker.io
     - kubelet
     - kubeadm
     - kubectl
     - kubernetes-cni
-
-- name: Enable docker and kubelet services
-  service: name={{ item }} state=started enabled=yes
-  with_items:
-    - docker
-    - kubelet
 
 - name: Initialise Kubernetes control plane components
   command: kubeadm init --token={{ kubeadm_token }} --api-advertise-addresses={{ kube_master_ip }}

@@ -2,7 +2,7 @@
 # Setup tasks for JupyterHub on Kubernetes
 
 - name: Install pip for system Python
-  yum: name=python-pip state=latest
+  apt: update_cache=yes name=python-pip state=latest
 
 - name: Install docker-py
   pip: name=docker-py state=latest

@@ -1,0 +1,9 @@
+---
+# This playbook just updates the packages on all machines using apt
+
+- hosts: all
+  remote_user: root
+  force_handlers: yes
+  tasks:
+    - name: Upgrade packages using apt-get dist-upgrade
+      apt: update_cache=yes upgrade=dist
