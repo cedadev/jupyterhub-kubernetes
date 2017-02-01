@@ -1,8 +1,7 @@
 ---
-# This playbook sets up a Kubernetes cluster
 
 - hosts: kube_hosts
   remote_user: root
   force_handlers: yes
   roles:
-    - kube_cluster
+    - gluster_k8s

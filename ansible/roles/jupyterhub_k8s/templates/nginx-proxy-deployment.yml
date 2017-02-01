@@ -2,6 +2,9 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: nginx-ssl-cert
+  labels:
+    app: jupyterhub
+    jupyterhub: nginx-proxy
 type: Opaque
 data:
   pem: |-
@@ -13,6 +16,9 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: nginx-conf
+  labels:
+    app: jupyterhub
+    jupyterhub: nginx-proxy
 data:
   nginx.conf: |-
     user  nginx;
@@ -115,12 +121,16 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   name: nginx-proxy
+  labels:
+    app: jupyterhub
+    jupyterhub: nginx-proxy
 spec:
   replicas: 1
   template:
     metadata:
       labels:
-        app: nginx-proxy
+        app: jupyterhub
+        jupyterhub: nginx-proxy
     spec:
       containers:
         - name: nginx

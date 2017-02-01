@@ -2,3 +2,4 @@
 *.retry
 .dockerhub-credentials.yml
 venv
+*.vdi

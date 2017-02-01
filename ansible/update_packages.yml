@@ -1,5 +1,4 @@
 ---
-# This playbook just updates the packages on all machines using apt
 
 - hosts: all
   remote_user: root

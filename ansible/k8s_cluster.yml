@@ -4,4 +4,4 @@
   remote_user: root
   force_handlers: yes
   roles:
-    - jupyterhub_k8s
+    - kube_cluster

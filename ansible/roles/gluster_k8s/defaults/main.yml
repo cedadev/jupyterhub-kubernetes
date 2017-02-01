@@ -1,0 +1,4 @@
+heketi_cli_tar: https://github.com/heketi/heketi/releases/download/v3.1.0/heketi-client-v3.1.0-HEAD.linux.amd64.tar.gz
+
+gluster_kubernetes_repo: https://github.com/gluster/gluster-kubernetes.git
+gluster_kubernetes_version: v0.3

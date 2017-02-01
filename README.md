@@ -34,27 +34,27 @@ $ source venv/bin/activate
 To access `kubectl` on the master, just use:
 
 ```
-$ vagrant ssh kube-node0 -- -l root
-[root@kube-node0 ~]# kubectl ...
+$ vagrant ssh kube-master -- -l root
+[root@kube-master ~]# kubectl ...
 ```
 
 To discover the port on which the Kubernetes Dashboard is running, use the following command:
 
 ```
-[root@kube-node0 ~]# kubectl describe svc kubernetes-dashboard -n kube-system | grep NodePort:
+[root@kube-master ~]# kubectl describe svc kubernetes-dashboard -n kube-system | grep NodePort:
 ```
 
 The dashboard will then be accessible via that port in a browser on the host, e.g. http://172.28.128.101:{port}.
 
 When bringing the cluster up, the Kubernetes manifest files for the various JupyterHub
-components are copied to the Kubernetes master (`kube-node0`), with some templating of
+components are copied to the Kubernetes master (`kube-master`), with some templating of
 variables (such as `server_name`).
 
 To start JupyterHub, these components must be started in a specific order:
 
 ```
-[root@kube-node0 ~]# cd ~/manifests
-[root@kube-node0 manifests]# kubectl create -f nfs-notebook-storage.yml -f hub-service.yml -f nginx-proxy-nodeport.yml -f nginx-proxy-deployment.yml
+[root@kube-master ~]# cd ~/manifests
+[root@kube-master manifests]# kubectl create -f nfs-notebook-storage.yml -f hub-service.yml -f nginx-proxy-nodeport.yml -f nginx-proxy-deployment.yml
 service "nfs-provisioner" created
 deployment "nfs-provisioner" created
 storageclass "notebook-storage" created
@@ -84,5 +84,5 @@ ceda_oauth_client_id: <client id>
 ceda_oauth_client_secret: <client secret>
 ```
 
-When you provision the cluster, the manifest files will be created on `kube-node0`
+When you provision the cluster, the manifest files will be created on `kube-master`
 with appropriate settings to use the CEDA OAuth Server for authentication.

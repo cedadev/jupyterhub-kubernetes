@@ -1,5 +1,4 @@
 ---
-# Setup tasks for JupyterHub on Kubernetes
 
 - name: Install pip for system Python
   apt: update_cache=yes name=python-pip state=latest
@@ -7,11 +6,8 @@
 - name: Install docker-py
   pip: name=docker-py state=latest
 
-- name: Pre-pull Docker images onto nodes
-  docker_image: name={{ item }}
-  with_items:
-    - "{{ jupyterhub_image }}"
-    - "{{ singleuser_image }}"
+- name: Pre-pull notebook image onto nodes
+  docker_image: name={{ singleuser_image }}
   when: kube_role == 'node'
 
 - name: Create certs directory
@@ -46,8 +42,33 @@
   file: path=/root/manifests state=directory
   when: kube_role == 'master'
 
-- name: Copy manifest files
+- name: Copy k8s manifest files
   template: src={{ item }} dest=/root/manifests/ mode="u=rw,g=,o="
-  with_fileglob:
-    - "{{ playbook_dir }}/../jupyterhub_k8s/*.yml"
+  with_items:
+    - "{{ notebook_storageclass_type }}-storageclass.yml"
+    - hub-service.yml
+    - nginx-proxy-{{ nginx_proxy_service_type }}.yml
+    - nginx-proxy-deployment.yml
+  register: k8s_manifests
+  when: kube_role == 'master'
+
+- name: Install k8s manifests
+  shell: kubectl apply -f /root/manifests/{{ item }}
+  with_items:
+    - "{{ notebook_storageclass_type }}-storageclass.yml"
+    - hub-service.yml
+    - nginx-proxy-{{ nginx_proxy_service_type }}.yml
+    - nginx-proxy-deployment.yml
+  when: kube_role == 'master' and k8s_manifests|changed
+
+- name: Remove existing jupyterhub pods
+  shell: kubectl delete po -l app=jupyterhub --grace-period=0
+  when: kube_role == 'master' and k8s_manifests|changed
+
+- name: Ensure all jupyterhub containers have started
+  shell: kubectl get pods -l app=jupyterhub -o json | jq '.items | map(.status.containerStatuses) | flatten | map(.ready) | all'
+  register: result
+  until: result.stdout == "true"
+  retries: 30
+  delay: 10
   when: kube_role == 'master'

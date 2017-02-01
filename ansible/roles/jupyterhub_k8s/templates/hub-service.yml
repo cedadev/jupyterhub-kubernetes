@@ -4,17 +4,20 @@ metadata:
   name: jupyterhub
   labels:
     app: jupyterhub
+    jupyterhub: hub-service
 spec:
   ports:
     - protocol: TCP
       port: 8000
   selector:
-    app: jupyterhub
+    jupyterhub: hub-service
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: jupyterhub-config
+  labels:
+    app: jupyterhub
 data:
   jupyterhub-config.py: |-
     import os
@@ -47,12 +50,16 @@ data:
 {% else %}
     c.JupyterHub.authenticator_class = 'dummyauthenticator.DummyAuthenticator'
 {% endif %}
+    c.Authenticator.admin_users = {'mpryor'}
+    c.JupyterHub.admin_access = True
 ---
 {% if jupyterhub_image_name == "jupyterhub-kubernetes-ceda-oauth" %}
 apiVersion: v1
 kind: Secret
 metadata:
   name: ceda-oauth-creds
+  labels:
+    app: jupyterhub
 type: Opaque
 data:
   client_id: {{ ceda_oauth_client_id|b64encode }}
@@ -63,12 +70,16 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   name: jupyterhub
+  labels:
+    app: jupyterhub
+    jupyterhub: hub-service
 spec:
   replicas: 1
   template:
     metadata:
       labels:
         app: jupyterhub
+        jupyterhub: hub-service
     spec:
       containers:
         - name: jupyterhub

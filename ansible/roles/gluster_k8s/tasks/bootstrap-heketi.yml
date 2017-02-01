@@ -1,0 +1,57 @@
+---
+
+- name: Copy deploy-heketi.yml to master
+  template:
+    src: deploy-heketi.yml
+    dest: /root/manifests
+    mode: u=rw,g=,o=
+  when: kube_role == 'master'
+
+- name: Install deploy-heketi service
+  shell: kubectl apply -f /root/manifests/deploy-heketi.yml
+  when: kube_role == 'master'
+
+- name: Ensure deploy-heketi service is running
+  shell: kubectl get pods -l name=deploy-heketi -o json | jq '.items | map(.status.containerStatuses) | flatten | map(.ready) | all'
+  register: result
+  until: result.stdout == "true"
+  retries: 30
+  delay: 10
+  when: kube_role == 'master'
+
+- name: Get deploy-heketi service url
+  shell: kubectl describe svc/deploy-heketi | grep "Endpoints:" | awk '{print $2}'
+  register: deploy_heketi
+  when: kube_role == 'master'
+
+- name: Ensure deploy-heketi service is responding
+  uri: url=http://{{ deploy_heketi.stdout }}/hello
+  when: kube_role == 'master'
+
+- name: Install gluster topology using heketi-cli
+  shell: heketi-cli topology load --json=/root/manifests/gluster-topology.json
+  environment:
+    HEKETI_CLI_SERVER: http://{{ deploy_heketi.stdout }}
+  when: kube_role == 'master'
+
+- name: Generate heketi-storage job
+  shell: heketi-cli setup-openshift-heketi-storage --listfile=/root/manifests/heketi-storage.json
+  environment:
+    HEKETI_CLI_SERVER: http://{{ deploy_heketi.stdout }}
+  when: kube_role == 'master'
+
+- name: Run heketi-storage job
+  shell: kubectl create -f /root/manifests/heketi-storage.json
+  when: kube_role == 'master'
+
+- name: Ensure heketi-storage job has completed successfully
+  shell: kubectl get job/heketi-storage-copy-job -o json | jq '.status.succeeded == 1'
+  register: result
+  until: result.stdout == "true"
+  retries: 30
+  delay: 10
+  when: kube_role == 'master'
+
+- name: Delete bootstrap artifacts
+  shell: kubectl delete all,service,jobs,deployment,secret --selector="deploy-heketi"
+  when: kube_role == 'master'

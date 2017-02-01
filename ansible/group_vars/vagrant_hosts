@@ -1,6 +1,11 @@
 kubeadm_token: w0b09p.7co13yzm2nlteyb0
 
-server_name: "{{ hostvars[groups['kube_masters'][0]]['ansible_' + cluster_interface]['ipv4']['address'] }}"
+storage_device: /dev/sdb
+
+nginx_proxy_service_type: nodeport
+notebook_storageclass_type: nfs
+
+server_name: "{{ hostvars[groups['kube_masters'][0]]['ansible_' + cluster_interface].ipv4.address }}"
 
 use_self_signed_ssl_cert: true
 ssl_cert_subject: /C=GB/ST=Oxfordshire/L=Didcot/O=Science and Technology Facilities Council/OU=Centre for Environmental Data Analysis/CN={{ server_name }}
