@@ -4,7 +4,7 @@
 - name: Add cluster IPs on correct interface to /etc/hosts
   lineinfile:
     dest: /etc/hosts
-    line: "{{ hostvars[item]['ansible_' + cluster_interface]['ipv4']['address'] }} {{ item }}"
+    line: "{{ hostvars[item]['ansible_' + cluster_interface].ipv4.address }} {{ item }}"
     insertbefore: BOF
     regexp: "{{ item }}$"
   with_items: "{{ groups['kube_hosts'] }}"
@@ -35,7 +35,7 @@
   args:
     creates: /etc/kubernetes/kubelet.conf
   register: kubeadm_init
-  when: kube_role == 'master'
+  when: inventory_hostname in groups['kube_masters']
 
 - name: Correct the API advertise address
   lineinfile:
@@ -43,22 +43,22 @@
     regexp: "--advertise-address"
     line: "          \"--advertise-address={{ kube_master_ip }}\","
     insertafter: "--allow-privileged"
-  when: kubeadm_init|changed and kube_role == 'master'
+  when: kubeadm_init|changed and inventory_hostname in groups['kube_masters']
 
 - name: Update proxy-mode for proxy pods
   shell: "kubectl -n kube-system get ds -l 'component=kube-proxy' -o json | jq '.items[0].spec.template.spec.containers[0].command |= .+ [\"--proxy-mode=userspace\"]' | kubectl apply -f - && kubectl -n kube-system delete pods -l 'component=kube-proxy'"
-  when: kubeadm_init|changed and kube_role == 'master'
+  when: kubeadm_init|changed and inventory_hostname in groups['kube_masters']
 
 - name: Join Kubernetes cluster (preflight checks skipped due to https://github.com/kubernetes/kubeadm/issues/6)
   command: kubeadm join --skip-preflight-checks --token={{ kubeadm_token }} {{ kube_master_ip }}
   args:
     creates: /etc/kubernetes/kubelet.conf
-  when: kube_role == 'node'
+  when: inventory_hostname in groups['kube_nodes']
 
 - name: Install pod network
   command: kubectl apply -f https://git.io/weave-kube
-  when: kube_role == 'master'
+  when: inventory_hostname in groups['kube_masters']
 
 - name: Install Kubernetes Dashboard
   command: kubectl apply -f https://rawgit.com/kubernetes/dashboard/master/src/deploy/kubernetes-dashboard.yaml
-  when: kube_role == 'master'
+  when: inventory_hostname in groups['kube_masters']

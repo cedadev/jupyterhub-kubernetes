@@ -2,7 +2,7 @@
     "clusters": [
         {
             "nodes": [
-                {% for host in groups['kube_nodes'] %}
+                {% for host in groups['glusterfs_nodes'] %}
                 {
                     "node": {
                         "hostnames": {
@@ -16,7 +16,7 @@
                         "zone": 1
                     },
                     "devices": [
-                        {% for disk in glusterfs_disks %}"{{ disk }}"{% if not loop.last %},{% endif %}{% endfor %}
+                        "{{ storage_device }}"
                     ]
                 }{% if not loop.last %},{% endif %}
                 {% endfor %}

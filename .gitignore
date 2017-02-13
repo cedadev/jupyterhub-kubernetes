@@ -3,3 +3,4 @@
 .dockerhub-credentials.yml
 venv
 *.vdi
+.kubeadm-join-cmd

@@ -41,33 +41,12 @@ $ vagrant ssh kube-master -- -l root
 To discover the port on which the Kubernetes Dashboard is running, use the following command:
 
 ```
-[root@kube-master ~]# kubectl describe svc kubernetes-dashboard -n kube-system | grep NodePort:
+[root@kube-master ~]# kubectl describe svc/kubernetes-dashboard -n kube-system | grep NodePort:
 ```
 
 The dashboard will then be accessible via that port in a browser on the host, e.g. http://172.28.128.101:{port}.
 
-When bringing the cluster up, the Kubernetes manifest files for the various JupyterHub
-components are copied to the Kubernetes master (`kube-master`), with some templating of
-variables (such as `server_name`).
-
-To start JupyterHub, these components must be started in a specific order:
-
-```
-[root@kube-master ~]# cd ~/manifests
-[root@kube-master manifests]# kubectl create -f nfs-notebook-storage.yml -f hub-service.yml -f nginx-proxy-nodeport.yml -f nginx-proxy-deployment.yml
-service "nfs-provisioner" created
-deployment "nfs-provisioner" created
-storageclass "notebook-storage" created
-service "jupyterhub" created
-configmap "jupyterhub-config" created
-deployment "jupyterhub" created
-service "nginx-proxy" created
-secret "nginx-ssl-cert" created
-configmap "nginx-conf" created
-deployment "nginx-proxy" created
-```
-
-Once all the pods have started, JupyterHub will be available at https://172.28.128.101:31443.
+JupyterHub will be available at https://172.28.128.101:31443.
 
 ## Authentication using CEDA OAuth Server
 
@@ -84,5 +63,4 @@ ceda_oauth_client_id: <client id>
 ceda_oauth_client_secret: <client secret>
 ```
 
-When you provision the cluster, the manifest files will be created on `kube-master`
-with appropriate settings to use the CEDA OAuth Server for authentication.
+When you provision the cluster, JupyterHub will be configured to use the CEDA OAuth Server for authentication.

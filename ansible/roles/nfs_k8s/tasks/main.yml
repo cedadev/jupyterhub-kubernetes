@@ -2,60 +2,64 @@
 
 - name: Install jq on master
   apt: update_cache=yes name=jq state=latest
-  when: kube_role == 'master'
+  when: inventory_hostname in groups['kube_masters']
 
-- name: Install NFS utils on nodes
+- name: Install NFS client utils on all nodes
   apt: update_cache=yes name=nfs-common state=latest
-  when: kube_role == 'node'
+  when: inventory_hostname in groups['kube_nodes']
 
 - name: Check if storage device has been partitioned
   stat: path={{ storage_partition }}
   register: stat
-  when: kube_role == 'node'
+  when: inventory_hostname in groups['nfs_nodes']
 
 - name: Make primary partition on storage device
   shell: parted -s -a opt {{ storage_device }} mklabel gpt -- mkpart primary ext4 1 -1
-  when: kube_role == 'node' and not stat.stat.exists
+  when: inventory_hostname in groups['nfs_nodes'] and not stat.stat.exists
 
 - name: Create filesystem on primary partition
   filesystem:
     dev: "{{ storage_partition }}"
     fstype: ext4
     resizefs: yes
-  when: kube_role == 'node'
+  when: inventory_hostname in groups['nfs_nodes']
 
 - name: Mount storage device
   mount:
-    name: /data
+    name: /srv/nfs_share
     src: "{{ storage_device }}1"
     state: mounted
     fstype: ext4
-  when: kube_role == 'node'
+  when: inventory_hostname in groups['nfs_nodes']
+
+- name: Ensure rpcbind started
+  service: name=rpcbind state=started enabled=yes
+  when: inventory_hostname in groups['nfs_nodes']
 
 - name: Label storage nodes
   shell: kubectl label node {{ item }} storagenode=nfs --overwrite=true
-  with_items: "{{ groups['kube_nodes'] }}"
-  when: kube_role == 'master'
+  with_items: "{{ groups['nfs_nodes'] }}"
+  when: inventory_hostname in groups['kube_masters']
 
 - name: Create manifests directory
   file: path=/root/manifests state=directory
-  when: kube_role == 'master'
+  when: inventory_hostname in groups['kube_masters']
 
 - name: Copy nfs-daemonset.yml to master
   template:
     src: nfs-daemonset.yml
     dest: /root/manifests
     mode: u=rw,g=,o=
-  when: kube_role == 'master'
+  when: inventory_hostname in groups['kube_masters']
 
-- name: Install NFS provisioner daemonset
-  shell: kubectl apply -f /root/manifests/nfs-daemonset.yml && kubectl delete pods -l app=nfs-provisioner
-  when: kube_role == 'master'
+- name: Install NFS daemonset
+  shell: kubectl apply -f /root/manifests/nfs-daemonset.yml --force=true
+  when: inventory_hostname in groups['kube_masters']
 
 - name: Ensure NFS daemonset is running
-  shell: kubectl get ds/nfs-provisioner -o json | jq '.status.numberReady == .status.desiredNumberScheduled'
+  shell: kubectl get ds/nfs-server -o json | jq '.status.numberReady == .status.desiredNumberScheduled'
   register: result
   until: result.stdout == "true"
   retries: 30
   delay: 10
-  when: kube_role == 'master'
+  when: inventory_hostname in groups['kube_masters']

@@ -1,0 +1,19 @@
+---
+
+- name: Get heketi service endpoint
+  shell: kubectl describe svc/heketi | grep "Endpoints:" | awk '{print $2}'
+  register: heketi_svc_ep
+  when: inventory_hostname in groups['kube_masters']
+
+- name: Set heketi_svc_url fact
+  set_fact:
+    heketi_svc_url: http://{{ heketi_svc_ep.stdout }}
+  when: inventory_hostname in groups['kube_masters']
+
+- name: Copy storageclass manifest
+  template: src=glusterfs-storageclass.yml dest=/root/manifests/ mode="u=rw,g=,o="
+  when: inventory_hostname in groups['kube_masters']
+
+- name: Install gluster storageclass
+  shell: kubectl apply -f /root/manifests/glusterfs-storageclass.yml --force
+  when: inventory_hostname in groups['kube_masters']

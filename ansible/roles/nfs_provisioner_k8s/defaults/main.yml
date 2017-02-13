@@ -1,4 +1,0 @@
-storage_partition: "{{ storage_device }}1"
-
-nfs_provisioner_image: quay.io/kubernetes_incubator/nfs-provisioner
-nfs_provisioner_version: v1.0.3

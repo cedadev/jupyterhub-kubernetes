@@ -3,24 +3,24 @@
 
 - name: Install jq
   apt: update_cache=yes name=jq state=latest
-  when: kube_role == 'master'
+  when: inventory_hostname in groups['kube_masters']
 
-- name: Load dm_thin_pool kernel module on storage nodes
+- name: Load dm_thin_pool kernel module on glusterfs nodes
   modprobe: name=dm_thin_pool state=present
-  when: kube_role == 'node'
+  when: inventory_hostname in groups['glusterfs_nodes']
 
-- name: Install glusterfs-client on storage nodes
+- name: Install glusterfs-client on all nodes
   apt: update_cache=yes name=glusterfs-client state=latest
-  when: kube_role == 'node'
+  when: inventory_hostname in groups['kube_nodes']
 
 - name: Fetch heketi-cli tarball
   get_url: url={{ heketi_cli_tar }} dest=/root/heketi-cli.tar.gz force=yes
   register: fetch_heketi
-  when: kube_role == 'master'
+  when: inventory_hostname in groups['kube_masters']
 
 - name: Unpack heketi-cli
   unarchive: remote_src=yes src=/root/heketi-cli.tar.gz dest=/root
-  when: kube_role == 'master' and fetch_heketi|changed
+  when: inventory_hostname in groups['kube_masters'] and fetch_heketi|changed
 
 - name: Install heketi-cli
   copy:
@@ -28,27 +28,27 @@
     src: /root/heketi-client/bin/heketi-cli
     dest: /usr/local/bin/heketi-cli
     mode: u=rwx,g=rx,o=rx
-  when: kube_role == 'master'
+  when: inventory_hostname in groups['kube_masters']
 
-- name: Label storage nodes
+- name: Label glusterfs storage nodes
   shell: kubectl label node {{ item }} storagenode=glusterfs --overwrite=true
-  with_items: "{{ groups['kube_nodes'] }}"
-  when: kube_role == 'master'
+  with_items: "{{ groups['glusterfs_nodes'] }}"
+  when: inventory_hostname in groups['kube_masters']
 
 - name: Create manifests directory
   file: path=/root/manifests state=directory
-  when: kube_role == 'master'
+  when: inventory_hostname in groups['kube_masters']
 
 - name: Copy glusterfs-daemonset.yml to master
   template:
     src: glusterfs-daemonset.yml
     dest: /root/manifests
     mode: u=rw,g=,o=
-  when: kube_role == 'master'
+  when: inventory_hostname in groups['kube_masters']
 
 - name: Install glusterfs daemonset
-  shell: kubectl apply -f /root/manifests/glusterfs-daemonset.yml
-  when: kube_role == 'master'
+  shell: kubectl apply -f /root/manifests/glusterfs-daemonset.yml --force
+  when: inventory_hostname in groups['kube_masters']
 
 - name: Ensure glusterfs daemonset is running
   shell: kubectl get ds/glusterfs -o json | jq '.status.numberReady == .status.desiredNumberScheduled'
@@ -56,34 +56,34 @@
   until: result.stdout == "true"
   retries: 30
   delay: 10
-  when: kube_role == 'master'
+  when: inventory_hostname in groups['kube_masters']
 
 - name: Copy gluster-topology.json to master
   template:
     src: gluster-topology.json
     dest: /root/manifests
     mode: u=rw,g=,o=
-  when: kube_role == 'master'
+  when: inventory_hostname in groups['kube_masters']
 
 - name: Check if heketi has been bootstrapped
   shell: kubectl get pods -l name=heketi -o json | jq '.items | length > 0'
   register: is_heketi_running
-  when: kube_role == 'master'
+  when: inventory_hostname in groups['kube_masters']
 
 - name: Bootstrap heketi
   include: bootstrap-heketi.yml
-  when: kube_role == 'master' and is_heketi_running.stdout == 'false'
+  when: inventory_hostname in groups['kube_masters'] and is_heketi_running.stdout == 'false'
 
 - name: Copy heketi-service.yml to master
   template:
     src: heketi-service.yml
     dest: /root/manifests
     mode: u=rw,g=,o=
-  when: kube_role == 'master'
+  when: inventory_hostname in groups['kube_masters']
 
 - name: Install heketi service
-  shell: kubectl apply -f /root/manifests/heketi-service.yml
-  when: kube_role == 'master'
+  shell: kubectl apply -f /root/manifests/heketi-service.yml --force
+  when: inventory_hostname in groups['kube_masters']
 
 - name: Ensure heketi service is running
   shell: kubectl get pods -l name=heketi -o json | jq '.items | map(.status.containerStatuses) | flatten | map(.ready) | all'
@@ -91,15 +91,15 @@
   until: result.stdout == "true"
   retries: 30
   delay: 10
-  when: kube_role == 'master'
+  when: inventory_hostname in groups['kube_masters']
 
 - name: Get heketi service url
   shell: kubectl describe svc/heketi | grep "Endpoints:" | awk '{print $2}'
   register: heketi_svc
-  when: kube_role == 'master'
+  when: inventory_hostname in groups['kube_masters']
 
 - name: Update gluster topology using heketi-cli
   shell: heketi-cli topology load --json=/root/manifests/gluster-topology.json
   environment:
     HEKETI_CLI_SERVER: http://{{ heketi_svc.stdout }}
-  when: kube_role == 'master' and is_heketi_running.stdout == 'true'
+  when: inventory_hostname in groups['kube_masters'] and is_heketi_running.stdout == 'true'

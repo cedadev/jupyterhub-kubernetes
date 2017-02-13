@@ -3,7 +3,7 @@ kubeadm_token: w0b09p.7co13yzm2nlteyb0
 storage_device: /dev/sdb
 
 nginx_proxy_service_type: nodeport
-notebook_storageclass_type: nfs
+notebook_storage_type: nfs
 
 server_name: "{{ hostvars[groups['kube_masters'][0]]['ansible_' + cluster_interface].ipv4.address }}"
 

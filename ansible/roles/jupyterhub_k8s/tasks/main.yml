@@ -1,5 +1,9 @@
 ---
 
+- name: Install jq on master
+  apt: update_cache=yes name=jq state=latest
+  when: inventory_hostname in groups['kube_masters']
+
 - name: Install pip for system Python
   apt: update_cache=yes name=python-pip state=latest
 
@@ -8,11 +12,11 @@
 
 - name: Pre-pull notebook image onto nodes
   docker_image: name={{ singleuser_image }}
-  when: kube_role == 'node'
+  when: inventory_hostname in groups['kube_nodes']
 
 - name: Create certs directory
   file: path=/root/certs state=directory
-  when: kube_role == 'master'
+  when: inventory_hostname in groups['kube_masters']
 
 - name: Generate self-signed SSL certificate on master
   command: >
@@ -20,50 +24,45 @@
     -keyout /root/certs/cert.key -out /root/certs/cert.pem -extensions v3_ca
   args:
     creates: /root/certs/cert.pem
-  when: kube_role == 'master' and use_self_signed_ssl_cert
+  when: inventory_hostname in groups['kube_masters'] and use_self_signed_ssl_cert
 
 - name: Retrieve self-signed SSL certificate from master
   slurp: src=/root/certs/cert.pem
   register: self_signed_cert
-  when: kube_role == 'master' and use_self_signed_ssl_cert
+  when: inventory_hostname in groups['kube_masters'] and use_self_signed_ssl_cert
 
 - name: Retrieve self-signed SSL private key from master
   slurp: src=/root/certs/cert.key
   register: self_signed_key
-  when: kube_role == 'master' and use_self_signed_ssl_cert
+  when: inventory_hostname in groups['kube_masters'] and use_self_signed_ssl_cert
 
 - name: Set SSL facts from self-signed cert
   set_fact:
     ssl_certificate: "{{ self_signed_cert.content|b64decode }}"
     ssl_private_key: "{{ self_signed_key.content|b64decode }}"
-  when: kube_role == 'master' and use_self_signed_ssl_cert
+  when: inventory_hostname in groups['kube_masters'] and use_self_signed_ssl_cert
 
 - name: Create manifests directory
   file: path=/root/manifests state=directory
-  when: kube_role == 'master'
+  when: inventory_hostname in groups['kube_masters']
+
+- include: setup-storage-{{ notebook_storage_type }}.yml
 
 - name: Copy k8s manifest files
   template: src={{ item }} dest=/root/manifests/ mode="u=rw,g=,o="
   with_items:
-    - "{{ notebook_storageclass_type }}-storageclass.yml"
     - hub-service.yml
     - nginx-proxy-{{ nginx_proxy_service_type }}.yml
     - nginx-proxy-deployment.yml
-  register: k8s_manifests
-  when: kube_role == 'master'
+  when: inventory_hostname in groups['kube_masters']
 
 - name: Install k8s manifests
-  shell: kubectl apply -f /root/manifests/{{ item }}
+  shell: kubectl apply -f /root/manifests/{{ item }} --force
   with_items:
-    - "{{ notebook_storageclass_type }}-storageclass.yml"
     - hub-service.yml
     - nginx-proxy-{{ nginx_proxy_service_type }}.yml
     - nginx-proxy-deployment.yml
-  when: kube_role == 'master' and k8s_manifests|changed
-
-- name: Remove existing jupyterhub pods
-  shell: kubectl delete po -l app=jupyterhub --grace-period=0
-  when: kube_role == 'master' and k8s_manifests|changed
+  when: inventory_hostname in groups['kube_masters']
 
 - name: Ensure all jupyterhub containers have started
   shell: kubectl get pods -l app=jupyterhub -o json | jq '.items | map(.status.containerStatuses) | flatten | map(.ready) | all'
@@ -71,4 +70,4 @@
   until: result.stdout == "true"
   retries: 30
   delay: 10
-  when: kube_role == 'master'
+  when: inventory_hostname in groups['kube_masters']

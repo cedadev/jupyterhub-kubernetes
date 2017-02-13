@@ -1,20 +1,19 @@
 kind: DaemonSet
 apiVersion: extensions/v1beta1
 metadata:
-  name: nfs-provisioner
+  name: nfs-server
 spec:
   template:
     metadata:
       labels:
-        app: nfs-provisioner
+        app: nfs-server
     spec:
       nodeSelector:
         storagenode: nfs
       hostNetwork: true
       containers:
-        - name: nfs-provisioner
-          image: {{ nfs_provisioner_image }}:{{ nfs_provisioner_version }}
-          imagePullPolicy: IfNotPresent
+        - name: nfs-server
+          image: {{ nfs_server_image }}
           ports:
             - name: nfs
               containerPort: 2049
@@ -33,21 +32,10 @@ spec:
             capabilities:
               add:
                 - DAC_READ_SEARCH
-          args:
-            - "-provisioner=kubernetes-incubator/nfs-provisioner"
-          env:
-            - name: POD_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.podIP
-            - name: NODE_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: spec.nodeName
           volumeMounts:
             - name: export-volume
-              mountPath: /export
+              mountPath: /exports
       volumes:
         - name: export-volume
           hostPath:
-            path: /data
+            path: /srv/nfs_share

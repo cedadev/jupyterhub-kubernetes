@@ -3,6 +3,7 @@
 
 N_NODES = 2
 
+
 def ansible_kube_common(ansible)
   ansible.limit = "all"
   ansible.force_remote_user = false
@@ -14,6 +15,8 @@ def ansible_kube_common(ansible)
     "kube_nodes" => (0..N_NODES-1).map { |n| "kube-node%d" % n },
     "kube_hosts:children" => ["kube_masters", "kube_nodes"],
     "vagrant_hosts:children" => ["kube_hosts"],
+    "nfs_nodes" => ["kube-node0"],  # The first node has extra storage for NFS
+    "glusterfs_nodes" => []  # The current setup has no glusterfs nodes
   }
 end
 
@@ -43,20 +46,22 @@ Vagrant.configure(2) do |config|
       node.vm.hostname = node_name
       node.vm.network "private_network", ip: "172.28.128.%s" % (102 + n)
 
-      # Every slave node gets a gluster disk
-      gluster_disk = "./.vagrant/machines/#{node_name}/glusterfs.vdi"
-      node.vm.provider :virtualbox do |vb|
-        unless File.exist?(gluster_disk)
-          vb.customize [ 'createhd',
-                         '--filename', gluster_disk,
-                         '--size', 50 * 1024 ]
+      # The first node has an extra disk for the NFS share
+      if n == 0
+        vdi_file = "./.vagrant/machines/#{node_name}/disk0.vdi"
+        node.vm.provider :virtualbox do |vb|
+          unless File.exist?(vdi_file)
+            vb.customize [ 'createhd',
+                           '--filename', vdi_file,
+                           '--size', 50 * 1024 ]
+          end
+          vb.customize [ 'storageattach', :id,
+                         '--storagectl', "SATA Controller",
+                         '--port', 1,
+                         '--device', 0,
+                         '--type', 'hdd',
+                         '--medium', vdi_file ]
         end
-        vb.customize [ 'storageattach', :id,
-                       '--storagectl', "SATA Controller",
-                       '--port', 1,
-                       '--device', 0,
-                       '--type', 'hdd',
-                       '--medium', gluster_disk ]
       end
 
       if n == (N_NODES-1)
@@ -74,14 +79,14 @@ Vagrant.configure(2) do |config|
         end
         # Configure NFS provisioner
         node.vm.provision "ansible-nfs-k8s", type: "ansible" do |ansible|
-          ansible.playbook = "ansible/nfs_provisioner_k8s.yml"
+          ansible.playbook = "ansible/nfs_k8s.yml"
           ansible_kube_common(ansible)
         end
         # Configure gluster and heketi
-#        node.vm.provision "ansible-gluster-k8s", type: "ansible" do |ansible|
-#          ansible.playbook = "ansible/gluster_k8s.yml"
-#          ansible_kube_common(ansible)
-#        end
+        node.vm.provision "ansible-gluster-k8s", type: "ansible" do |ansible|
+          ansible.playbook = "ansible/gluster_k8s.yml"
+          ansible_kube_common(ansible)
+        end
         # Configure Jupyterhub
         node.vm.provision "ansible-jupyterhub-k8s", type: "ansible" do |ansible|
           ansible.playbook = "ansible/jupyterhub_k8s.yml"

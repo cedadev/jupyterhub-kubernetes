@@ -1,0 +1,9 @@
+---
+
+- name: Copy storageclass manifest
+  template: src=nfs-storageclass.yml dest=/root/manifests/ mode="u=rw,g=,o="
+  when: inventory_hostname in groups['kube_masters']
+
+- name: Install k8s manifests
+  shell: kubectl apply -f /root/manifests/nfs-storageclass.yml --force
+  when: inventory_hostname in groups['kube_masters']

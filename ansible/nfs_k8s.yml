@@ -4,4 +4,4 @@
   remote_user: root
   force_handlers: yes
   roles:
-    - nfs_provisioner_k8s
+    - nfs_k8s
