@@ -37,14 +37,6 @@
   register: kubeadm_init
   when: inventory_hostname in groups['kube_masters']
 
-- name: Correct the API advertise address
-  lineinfile:
-    dest: /etc/kubernetes/manifests/kube-apiserver.json
-    regexp: "--advertise-address"
-    line: "          \"--advertise-address={{ kube_master_ip }}\","
-    insertafter: "--allow-privileged"
-  when: kubeadm_init|changed and inventory_hostname in groups['kube_masters']
-
 - name: Update proxy-mode for proxy pods
   shell: "kubectl -n kube-system get ds -l 'component=kube-proxy' -o json | jq '.items[0].spec.template.spec.containers[0].command |= .+ [\"--proxy-mode=userspace\"]' | kubectl apply -f - && kubectl -n kube-system delete pods -l 'component=kube-proxy'"
   when: kubeadm_init|changed and inventory_hostname in groups['kube_masters']
@@ -61,4 +53,29 @@
 
 - name: Install Kubernetes Dashboard
   command: kubectl apply -f https://rawgit.com/kubernetes/dashboard/master/src/deploy/kubernetes-dashboard.yaml
+  when: inventory_hostname in groups['kube_masters']
+
+- name: Ensure kube-dns has started
+  shell: kubectl get pods -l k8s-app=kube-dns -n kube-system -o json | jq '.items | map(.status.containerStatuses) | flatten | map(.ready) | any'
+  register: result
+  until: result.stdout == "true"
+  retries: 30
+  delay: 10
+  when: inventory_hostname in groups['kube_masters']
+
+- name: Ensure Kubernetes dashboard has started
+  shell: kubectl get pods -l app=kubernetes-dashboard -n kube-system -o json | jq '.items | map(.status.containerStatuses) | flatten | map(.ready) | any'
+  register: result
+  until: result.stdout == "true"
+  retries: 30
+  delay: 10
+  when: inventory_hostname in groups['kube_masters']
+
+- name: Get Kubernetes dashboard port
+  shell: kubectl get svc/kubernetes-dashboard -n kube-system -o json | jq '.spec.ports[0].nodePort'
+  register: k8s_dashboard
+  when: inventory_hostname in groups['kube_masters']
+
+- debug:
+    msg: "Kubernetes dashboard available at http://{{ kube_master_ip }}:{{ k8s_dashboard.stdout }}"
   when: inventory_hostname in groups['kube_masters']

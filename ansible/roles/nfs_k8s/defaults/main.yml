@@ -1,3 +1,0 @@
-storage_partition: "{{ storage_device }}1"
-
-nfs_server_image: mkjpryor/nfs-server

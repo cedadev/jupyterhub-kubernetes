@@ -1,4 +1,23 @@
 apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-proxy
+  labels:
+    app: jupyterhub
+    jupyterhub: nginx-proxy
+spec:
+  type: NodePort
+  ports:
+    - name: http
+      port: 80
+      nodePort: 31080
+    - name: https
+      port: 443
+      nodePort: 31443
+  selector:
+    jupyterhub: nginx-proxy
+---
+apiVersion: v1
 kind: Secret
 metadata:
   name: nginx-ssl-cert

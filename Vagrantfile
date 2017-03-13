@@ -1,7 +1,7 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-N_NODES = 2
+N_NODES = 3
 
 
 def ansible_kube_common(ansible)
@@ -15,8 +15,7 @@ def ansible_kube_common(ansible)
     "kube_nodes" => (0..N_NODES-1).map { |n| "kube-node%d" % n },
     "kube_hosts:children" => ["kube_masters", "kube_nodes"],
     "vagrant_hosts:children" => ["kube_hosts"],
-    "nfs_nodes" => ["kube-node0"],  # The first node has extra storage for NFS
-    "glusterfs_nodes" => []  # The current setup has no glusterfs nodes
+    "glusterfs_nodes:children" => ["kube_nodes"]
   }
 end
 
@@ -46,15 +45,13 @@ Vagrant.configure(2) do |config|
       node.vm.hostname = node_name
       node.vm.network "private_network", ip: "172.28.128.%s" % (102 + n)
 
-      # The first node has an extra disk for the NFS share
-      if n == 0
-        vdi_file = "./.vagrant/machines/#{node_name}/disk0.vdi"
-        node.vm.provider :virtualbox do |vb|
-          unless File.exist?(vdi_file)
-            vb.customize [ 'createhd',
-                           '--filename', vdi_file,
-                           '--size', 50 * 1024 ]
-          end
+      # Each node has an extra disk for Gluster
+      vdi_file = "./.vagrant/machines/#{node_name}/disk0.vdi"
+      node.vm.provider :virtualbox do |vb|
+        unless File.exist?(vdi_file)
+          vb.customize [ 'createhd',
+                         '--filename', vdi_file,
+                         '--size', 50 * 1024 ]
           vb.customize [ 'storageattach', :id,
                          '--storagectl', "SATA Controller",
                          '--port', 1,
@@ -68,18 +65,13 @@ Vagrant.configure(2) do |config|
         # On the final node (i.e. when all the machines in the cluster have started)
         # we run the playbooks
         # Update packages
-        node.vm.provision "ansible-update-packages", type: "ansible" do |ansible|
-          ansible.playbook = "ansible/update_packages.yml"
-          ansible_kube_common(ansible)
-        end
+#        node.vm.provision "ansible-update-packages", type: "ansible" do |ansible|
+#          ansible.playbook = "ansible/update_packages.yml"
+#          ansible_kube_common(ansible)
+#        end
         # Kubernetes cluster setup
         node.vm.provision "ansible-k8s-cluster", type: "ansible" do |ansible|
           ansible.playbook = "ansible/k8s_cluster.yml"
-          ansible_kube_common(ansible)
-        end
-        # Configure NFS provisioner
-        node.vm.provision "ansible-nfs-k8s", type: "ansible" do |ansible|
-          ansible.playbook = "ansible/nfs_k8s.yml"
           ansible_kube_common(ansible)
         end
         # Configure gluster and heketi

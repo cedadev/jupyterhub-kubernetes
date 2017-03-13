@@ -42,26 +42,34 @@
     ssl_private_key: "{{ self_signed_key.content|b64decode }}"
   when: inventory_hostname in groups['kube_masters'] and use_self_signed_ssl_cert
 
+- name: Get heketi service endpoint
+  shell: kubectl describe svc/heketi | grep "Endpoints:" | awk '{print $2}'
+  register: heketi_svc_ep
+  when: inventory_hostname in groups['kube_masters']
+
+- name: Set heketi_svc_url fact
+  set_fact:
+    heketi_svc_url: http://{{ heketi_svc_ep.stdout }}
+  when: inventory_hostname in groups['kube_masters']
+
 - name: Create manifests directory
   file: path=/root/manifests state=directory
   when: inventory_hostname in groups['kube_masters']
 
-- include: setup-storage-{{ notebook_storage_type }}.yml
-
 - name: Copy k8s manifest files
   template: src={{ item }} dest=/root/manifests/ mode="u=rw,g=,o="
   with_items:
+    - glusterfs-storageclass.yml
     - hub-service.yml
-    - nginx-proxy-{{ nginx_proxy_service_type }}.yml
-    - nginx-proxy-deployment.yml
+    - nginx-proxy-service.yml
   when: inventory_hostname in groups['kube_masters']
 
 - name: Install k8s manifests
   shell: kubectl apply -f /root/manifests/{{ item }} --force
   with_items:
+    - glusterfs-storageclass.yml
     - hub-service.yml
-    - nginx-proxy-{{ nginx_proxy_service_type }}.yml
-    - nginx-proxy-deployment.yml
+    - nginx-proxy-service.yml
   when: inventory_hostname in groups['kube_masters']
 
 - name: Ensure all jupyterhub containers have started

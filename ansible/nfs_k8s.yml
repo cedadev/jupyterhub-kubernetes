@@ -1,7 +1,0 @@
----
-
-- hosts: kube_hosts
-  remote_user: root
-  force_handlers: yes
-  roles:
-    - nfs_k8s
