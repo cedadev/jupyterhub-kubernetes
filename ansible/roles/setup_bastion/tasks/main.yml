@@ -1,0 +1,30 @@
+---
+
+- name: Add cluster IPs on correct interface to /etc/hosts
+  lineinfile:
+    dest: /etc/hosts
+    line: "{{ hostvars[item]['ansible_' + cluster_interface].ipv4.address }} {{ item }}"
+    insertbefore: BOF
+    regexp: "{{ item }}$"
+  with_items: "{{ groups['all'] }}"
+
+- name: Make kube config directory
+  file: path=/root/.kube state=directory
+
+# We do this by copying kubectl and the admin.conf from the kube-master
+- name: Configure kubectl
+  shell: scp -oStrictHostKeyChecking=no {{ groups['kube_masters'][0] }}:{{ item.src }} {{ item.dest }}
+  args:
+    creates: "{{ item.dest }}"
+  with_items:
+    - { src: /usr/bin/kubectl, dest: /usr/local/bin/kubectl }
+    - { src: /etc/kubernetes/admin.conf, dest: /root/.kube/config }
+
+- name: Install jq
+  apt: name=jq state=latest
+
+- include: nginx-install-main.yml
+
+- include: nginx-install-jupyterhub.yml
+
+- include: nginx-install-k8s-dashboard.yml

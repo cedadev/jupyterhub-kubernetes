@@ -14,34 +14,6 @@
   docker_image: name={{ singleuser_image }}
   when: inventory_hostname in groups['kube_nodes']
 
-- name: Create certs directory
-  file: path=/root/certs state=directory
-  when: inventory_hostname in groups['kube_masters']
-
-- name: Generate self-signed SSL certificate on master
-  command: >
-    openssl req -new -nodes -x509 -subj "{{ ssl_cert_subject }}" -days 3650
-    -keyout /root/certs/cert.key -out /root/certs/cert.pem -extensions v3_ca
-  args:
-    creates: /root/certs/cert.pem
-  when: inventory_hostname in groups['kube_masters'] and use_self_signed_ssl_cert
-
-- name: Retrieve self-signed SSL certificate from master
-  slurp: src=/root/certs/cert.pem
-  register: self_signed_cert
-  when: inventory_hostname in groups['kube_masters'] and use_self_signed_ssl_cert
-
-- name: Retrieve self-signed SSL private key from master
-  slurp: src=/root/certs/cert.key
-  register: self_signed_key
-  when: inventory_hostname in groups['kube_masters'] and use_self_signed_ssl_cert
-
-- name: Set SSL facts from self-signed cert
-  set_fact:
-    ssl_certificate: "{{ self_signed_cert.content|b64decode }}"
-    ssl_private_key: "{{ self_signed_key.content|b64decode }}"
-  when: inventory_hostname in groups['kube_masters'] and use_self_signed_ssl_cert
-
 - name: Get heketi service endpoint
   shell: kubectl describe svc/heketi | grep "Endpoints:" | awk '{print $2}'
   register: heketi_svc_ep
@@ -61,7 +33,6 @@
   with_items:
     - glusterfs-storageclass.yml
     - hub-service.yml
-    - nginx-proxy-service.yml
   when: inventory_hostname in groups['kube_masters']
 
 - name: Install k8s manifests
@@ -69,7 +40,6 @@
   with_items:
     - glusterfs-storageclass.yml
     - hub-service.yml
-    - nginx-proxy-service.yml
   when: inventory_hostname in groups['kube_masters']
 
 - name: Ensure all jupyterhub containers have started

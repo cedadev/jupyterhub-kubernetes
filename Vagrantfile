@@ -11,10 +11,11 @@ def ansible_kube_common(ansible)
     "cluster_interface" => "enp0s8",
   }
   ansible.groups = {
+    "bastion_hosts" => ["bastion"],
     "kube_masters"  => ["kube-master"],
     "kube_nodes" => (0..N_NODES-1).map { |n| "kube-node%d" % n },
     "kube_hosts:children" => ["kube_masters", "kube_nodes"],
-    "vagrant_hosts:children" => ["kube_hosts"],
+    "vagrant_hosts:children" => ["bastion_hosts", "kube_hosts"],
     "glusterfs_nodes:children" => ["kube_nodes"]
   }
 end
@@ -22,6 +23,11 @@ end
 
 Vagrant.configure(2) do |config|
   config.vm.box = "boxcutter/ubuntu1604"
+
+  # We need to allow SSH between nodes, but don't care about security, so just
+  # use the Vagrant insecure private key
+  config.ssh.insert_key = false
+  config.ssh.forward_agent = true
 
   config.vm.provider :virtualbox do |vb|
     vb.customize ["modifyvm", :id, "--memory", "2048"]
@@ -33,6 +39,11 @@ Vagrant.configure(2) do |config|
   mkdir -p /root/.ssh
   cp ~vagrant/.ssh/authorized_keys /root/.ssh
   SHELL
+
+  config.vm.define "bastion" do |bastion|
+    bastion.vm.hostname = "bastion"
+    bastion.vm.network "private_network", ip: "172.28.128.100"
+  end
 
   config.vm.define "kube-master" do |master|
     master.vm.hostname = "kube-master"
@@ -82,6 +93,11 @@ Vagrant.configure(2) do |config|
         # Configure Jupyterhub
         node.vm.provision "ansible-jupyterhub-k8s", type: "ansible" do |ansible|
           ansible.playbook = "ansible/jupyterhub_k8s.yml"
+          ansible_kube_common(ansible)
+        end
+        # Configure bastion/proxy
+        node.vm.provision "ansible-setup-bastion", type: "ansible" do |ansible|
+          ansible.playbook = "ansible/setup_bastion.yml"
           ansible_kube_common(ansible)
         end
       end

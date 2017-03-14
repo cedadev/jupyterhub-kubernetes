@@ -2,11 +2,11 @@ kubeadm_token: w0b09p.7co13yzm2nlteyb0
 
 storage_device: /dev/sdb
 
-server_name: "{{ hostvars[groups['kube_masters'][0]]['ansible_' + cluster_interface].ipv4.address }}"
+server_name: "{{ hostvars[groups['bastion_hosts'][0]]['ansible_' + cluster_interface].ipv4.address }}"
 
 use_self_signed_ssl_cert: true
 ssl_cert_subject: /C=GB/ST=Oxfordshire/L=Didcot/O=Science and Technology Facilities Council/OU=Centre for Environmental Data Analysis/CN={{ server_name }}
 
-https_port: 31443
-
 jupyterhub_admins: ['mpryor']
+
+k8s_dashboard_passwd: Password123

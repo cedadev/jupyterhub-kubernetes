@@ -1,0 +1,18 @@
+---
+
+- name: Get kubernetes-dashboard NodePort
+  shell: kubectl get svc/kubernetes-dashboard -n kube-system -o json | jq '.spec.ports[0].nodePort'
+  register: nodeport
+
+- name: Create k8s-dashboard-users password file
+  shell: echo "admin:$(openssl passwd -crypt {{ k8s_dashboard_passwd }})" > /etc/nginx/k8s-dashboard-users
+
+- name: Set permissions for k8s-dashboard-users password file
+  file: path=/etc/nginx/k8s-dashboard-users owner=www-data group=www-data mode="u=r,g=,o="
+
+- name: Write kubernetes-dashboard site config
+  template: src=k8s-dashboard.nginx.conf dest=/etc/nginx/sites-enabled/k8s-dashboard
+  vars:
+    proxy_to: "http://{{ kube_master_ip }}:{{ nodeport.stdout }}"
+  notify:
+    - Restart nginx

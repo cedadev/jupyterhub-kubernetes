@@ -1,0 +1,1 @@
+kube_master_ip: "{{ hostvars[groups['kube_masters'][0]]['ansible_' + cluster_interface].ipv4.address }}"

@@ -1,11 +1,11 @@
 ---
 
-# Force fact-caching for all hosts
+# Force fact-caching for all nodes
 - hosts: all
   tasks: []
 
-- hosts: kube_hosts
+- hosts: bastion_hosts
   remote_user: root
   force_handlers: yes
   roles:
-    - jupyterhub_k8s
+    - setup_bastion

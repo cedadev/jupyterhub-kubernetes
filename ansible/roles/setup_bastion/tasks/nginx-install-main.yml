@@ -1,0 +1,53 @@
+---
+
+- name: Install nginx
+  apt: name=nginx state=latest
+  notify:
+    - Restart nginx
+
+- name: Create nginx certificate directory
+  file: path=/etc/nginx/certs state=directory
+
+- name: Generate self-signed SSL certificate
+  command: >
+    openssl req -new -nodes -x509 -subj "{{ ssl_cert_subject }}" -days 3650
+    -keyout /etc/nginx/certs/jupyterhub.key
+    -out /etc/nginx/certs/jupyterhub.pem -extensions v3_ca
+  args:
+    creates: /etc/nginx/certs/jupyterhub.pem
+  when: use_self_signed_ssl_cert
+  notify:
+    - Restart nginx
+
+- name: Install SSL certificate
+  copy:
+    content: "{{ ssl_certificate }}"
+    dest: /etc/nginx/certs/jupyterhub.pem
+  when: not use_self_signed_ssl_cert
+  notify:
+    - Restart nginx
+
+- name: Install SSL private key
+  copy:
+    content: "{{ ssl_private_key }}"
+    dest: /etc/nginx/certs/jupyterhub.key
+  when: not use_self_signed_ssl_cert
+  notify:
+    - Restart nginx
+
+- name: Make SSL cert files readable by root only
+  file: path=/etc/nginx/certs/jupyterhub.{{ item }} mode="u=r,g=,o="
+  with_items:
+    - key
+    - pem
+
+- name: Install main nginx configuration
+  copy: src=files/nginx.conf dest=/etc/nginx/nginx.conf
+  notify:
+    - Restart nginx
+
+- name: Remove default site
+  file: path=/etc/nginx/sites-enabled/default state=absent
+
+- name: Ensure nginx starts at boot time
+  service: name=nginx enabled=yes

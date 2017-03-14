@@ -1,0 +1,12 @@
+---
+
+- name: Get JupyterHub NodePort
+  shell: kubectl get svc/jupyterhub -o json | jq '.spec.ports[0].nodePort'
+  register: nodeport
+
+- name: Write JupyterHub site config
+  template: src=jupyterhub.nginx.conf dest=/etc/nginx/sites-enabled/jupyterhub
+  vars:
+    proxy_to: "http://{{ kube_master_ip }}:{{ nodeport.stdout }}"
+  notify:
+    - Restart nginx

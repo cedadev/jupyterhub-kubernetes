@@ -6,6 +6,7 @@ metadata:
     app: jupyterhub
     jupyterhub: hub-service
 spec:
+  type: NodePort
   ports:
     - protocol: TCP
       port: 8000
@@ -28,7 +29,7 @@ data:
     c.KubeSpawner.hub_connect_port = int(os.environ['JUPYTERHUB_SERVICE_PORT'])
     c.KubeSpawner.singleuser_image_spec = '{{ singleuser_image }}'
     # Each user gets their own persistentVolumeClaim
-    c.KubeSpawner.user_storage_capacity = '100Mi'
+    c.KubeSpawner.user_storage_capacity = '1Gi'
     c.KubeSpawner.user_storage_class = 'notebook-storage'
     c.KubeSpawner.volumes = [{
         'name' : 'notebook-volume',
@@ -42,7 +43,7 @@ data:
     }]
 {% if ceda_oauth_client_id is defined %}
     c.JupyterHub.authenticator_class = 'jupyterhub_ceda_auth.CedaOAuthenticator'
-    c.CedaOAuthenticator.oauth_callback_url = 'https://{{ server_name }}{% if https_port %}:{{ https_port }}{% endif %}/hub/oauth_callback'
+    c.CedaOAuthenticator.oauth_callback_url = 'https://{{ server_name }}/hub/oauth_callback'
     c.CedaOAuthenticator.client_id = os.environ['CEDA_OAUTH_CLIENT_ID']
     c.CedaOAuthenticator.client_secret = os.environ['CEDA_OAUTH_CLIENT_SECRET']
 {% else %}
