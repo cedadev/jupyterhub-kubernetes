@@ -1,7 +1,7 @@
 ---
 
-- hosts: kube_hosts
+- hosts: kube_masters
   remote_user: root
   force_handlers: yes
   roles:
-    - gluster_k8s
+    - k8s_dashboard

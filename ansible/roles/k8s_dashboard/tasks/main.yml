@@ -1,0 +1,11 @@
+---
+
+- name: Install Kubernetes Dashboard
+  command: kubectl apply -f https://rawgit.com/kubernetes/dashboard/v1.5.1/src/deploy/kubernetes-dashboard.yaml
+
+- name: Ensure Kubernetes dashboard has started
+  shell: kubectl get pods -l app=kubernetes-dashboard -n kube-system -o json | jq '.items | map(.status.containerStatuses) | flatten | map(.ready) | any'
+  register: result
+  until: result.stdout == "true"
+  retries: 30
+  delay: 10

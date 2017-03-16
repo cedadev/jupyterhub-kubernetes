@@ -1,0 +1,11 @@
+---
+
+# Force fact-caching for all nodes
+- hosts: all
+  tasks: []
+
+- hosts: nfs_hosts
+  remote_user: root
+  force_handlers: yes
+  roles:
+    - nfs_provisioner

@@ -5,6 +5,4 @@ metadata:
   labels:
     app: jupyterhub
     jupyterhub: notebook-storage
-provisioner: kubernetes.io/glusterfs
-parameters:
-  resturl: "{{ heketi_svc_url }}"
+provisioner: kubernetes-incubator/nfs

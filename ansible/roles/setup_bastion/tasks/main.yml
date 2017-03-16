@@ -1,13 +1,5 @@
 ---
 
-- name: Add cluster IPs on correct interface to /etc/hosts
-  lineinfile:
-    dest: /etc/hosts
-    line: "{{ hostvars[item]['ansible_' + cluster_interface].ipv4.address }} {{ item }}"
-    insertbefore: BOF
-    regexp: "{{ item }}$"
-  with_items: "{{ groups['all'] }}"
-
 - name: Make kube config directory
   file: path=/root/.kube state=directory
 

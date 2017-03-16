@@ -1,13 +1,4 @@
 ---
-# This role performs tasks common to all hosts in a Kubernetes cluster
-
-- name: Add cluster IPs on correct interface to /etc/hosts
-  lineinfile:
-    dest: /etc/hosts
-    line: "{{ hostvars[item]['ansible_' + cluster_interface].ipv4.address }} {{ item }}"
-    insertbefore: BOF
-    regexp: "{{ item }}$"
-  with_items: "{{ groups['kube_hosts'] }}"
 
 - name: Add apt repository key for Kubernetes repo
   apt_key:
@@ -51,31 +42,10 @@
   command: kubectl apply -f https://git.io/weave-kube
   when: inventory_hostname in groups['kube_masters']
 
-- name: Install Kubernetes Dashboard
-  command: kubectl apply -f https://rawgit.com/kubernetes/dashboard/master/src/deploy/kubernetes-dashboard.yaml
-  when: inventory_hostname in groups['kube_masters']
-
 - name: Ensure kube-dns has started
   shell: kubectl get pods -l k8s-app=kube-dns -n kube-system -o json | jq '.items | map(.status.containerStatuses) | flatten | map(.ready) | any'
   register: result
   until: result.stdout == "true"
   retries: 30
   delay: 10
-  when: inventory_hostname in groups['kube_masters']
-
-- name: Ensure Kubernetes dashboard has started
-  shell: kubectl get pods -l app=kubernetes-dashboard -n kube-system -o json | jq '.items | map(.status.containerStatuses) | flatten | map(.ready) | any'
-  register: result
-  until: result.stdout == "true"
-  retries: 30
-  delay: 10
-  when: inventory_hostname in groups['kube_masters']
-
-- name: Get Kubernetes dashboard port
-  shell: kubectl get svc/kubernetes-dashboard -n kube-system -o json | jq '.spec.ports[0].nodePort'
-  register: k8s_dashboard
-  when: inventory_hostname in groups['kube_masters']
-
-- debug:
-    msg: "Kubernetes dashboard available at http://{{ kube_master_ip }}:{{ k8s_dashboard.stdout }}"
   when: inventory_hostname in groups['kube_masters']

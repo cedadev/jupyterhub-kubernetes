@@ -13,6 +13,19 @@ spec:
   selector:
     jupyterhub: hub-service
 ---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: jupyterhub-state
+  annotations:
+    volume.beta.kubernetes.io/storage-class: "notebook-storage"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -22,6 +35,8 @@ metadata:
 data:
   jupyterhub-config.py: |-
     import os
+    c.JupyterHub.cookie_secret_file = '/var/run/jupyterhub/cookie_secret'
+    c.JupyterHub.db_url = '/var/run/jupyterhub/jupyterhub.sqlite'
     c.JupyterHub.spawner_class = 'kubespawner.KubeSpawner'
     c.KubeSpawner.namespace = os.environ.get('POD_NAMESPACE', 'default')
     c.KubeSpawner.start_timeout = 60 * 5  # Upto 5 minutes, first pulls can be really slow
@@ -49,7 +64,9 @@ data:
 {% else %}
     c.JupyterHub.authenticator_class = 'dummyauthenticator.DummyAuthenticator'
 {% endif %}
+    # To begin with, the whitelist is just the admin users
     c.Authenticator.admin_users = { {% for user in jupyterhub_admins %}'{{ user }}',{% endfor %} }
+    c.Authenticator.whitelist = { {% for user in jupyterhub_admins %}'{{ user }}',{% endfor %} }
     c.JupyterHub.admin_access = True
 ---
 {% if ceda_oauth_client_id is defined %}
@@ -113,6 +130,8 @@ spec:
           volumeMounts:
             - name: config-volume
               mountPath: /srv/jupyterhub/conf/
+            - name: state-volume
+              mountPath: /var/run/jupyterhub
       volumes:
         - name: config-volume
           configMap:
@@ -120,3 +139,6 @@ spec:
             items:
               - key: jupyterhub-config.py
                 path: jupyterhub_config.py
+        - name: state-volume
+          persistentVolumeClaim:
+            claimName: jupyterhub-state

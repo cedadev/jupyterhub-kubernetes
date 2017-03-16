@@ -14,16 +14,6 @@
   docker_image: name={{ singleuser_image }}
   when: inventory_hostname in groups['kube_nodes']
 
-- name: Get heketi service endpoint
-  shell: kubectl describe svc/heketi | grep "Endpoints:" | awk '{print $2}'
-  register: heketi_svc_ep
-  when: inventory_hostname in groups['kube_masters']
-
-- name: Set heketi_svc_url fact
-  set_fact:
-    heketi_svc_url: http://{{ heketi_svc_ep.stdout }}
-  when: inventory_hostname in groups['kube_masters']
-
 - name: Create manifests directory
   file: path=/root/manifests state=directory
   when: inventory_hostname in groups['kube_masters']
@@ -31,14 +21,14 @@
 - name: Copy k8s manifest files
   template: src={{ item }} dest=/root/manifests/ mode="u=rw,g=,o="
   with_items:
-    - glusterfs-storageclass.yml
+    - notebook-storageclass.yml
     - hub-service.yml
   when: inventory_hostname in groups['kube_masters']
 
 - name: Install k8s manifests
   shell: kubectl apply -f /root/manifests/{{ item }} --force
   with_items:
-    - glusterfs-storageclass.yml
+    - notebook-storageclass.yml
     - hub-service.yml
   when: inventory_hostname in groups['kube_masters']
 

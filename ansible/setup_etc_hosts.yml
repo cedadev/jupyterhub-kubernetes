@@ -1,0 +1,13 @@
+---
+
+- hosts: all
+  remote_user: root
+  force_handlers: yes
+  tasks:
+    - name: Add cluster IPs on correct interface to /etc/hosts
+      lineinfile:
+        dest: /etc/hosts
+        line: "{{ hostvars[item]['ansible_' + cluster_interface].ipv4.address }} {{ item }}"
+        insertbefore: BOF
+        regexp: "{{ item }}$"
+      with_items: "{{ groups['all'] }}"

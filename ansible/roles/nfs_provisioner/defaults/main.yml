@@ -1,0 +1,1 @@
+storage_partition: "{{ storage_device }}1"
