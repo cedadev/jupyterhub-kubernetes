@@ -26,6 +26,19 @@ spec:
     requests:
       storage: 1Gi
 ---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: public-notebooks
+  annotations:
+    volume.beta.kubernetes.io/storage-class: "notebook-storage"
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -44,18 +57,33 @@ data:
     c.KubeSpawner.hub_connect_port = int(os.environ['JUPYTERHUB_SERVICE_PORT'])
     c.KubeSpawner.singleuser_image_spec = '{{ singleuser_image }}'
     # Each user gets their own persistentVolumeClaim
+    c.KubeSpawner.pvc_name_template = 'claim-{username}-{userid}'
     c.KubeSpawner.user_storage_capacity = '1Gi'
     c.KubeSpawner.user_storage_class = 'notebook-storage'
-    c.KubeSpawner.volumes = [{
-        'name' : 'notebook-volume',
-        'persistentVolumeClaim' : {
-            'claimName' : 'claim-{username}-{userid}',
+    c.KubeSpawner.volumes = [
+        {
+            'name' : 'notebook-volume',
+            'persistentVolumeClaim' : {
+                'claimName' : 'claim-{username}-{userid}',
+            },
         },
-    }]
-    c.KubeSpawner.volume_mounts = [{
-        'name' : 'notebook-volume',
-        'mountPath' : '/home/jovyan/work',
-    }]
+        {
+            'name' : 'public-notebook-volume',
+            'persistentVolumeClaim' : {
+                'claimName' : 'public-notebooks',
+            },
+        },
+    ]
+    c.KubeSpawner.volume_mounts = [
+        {
+            'name' : 'notebook-volume',
+            'mountPath' : '/home/jovyan/work',
+        },
+        {
+            'name' : 'public-notebook-volume',
+            'mountPath' : '/home/jovyan/work/public',
+        },
+    ]
 {% if ceda_oauth_client_id is defined %}
     c.JupyterHub.authenticator_class = 'jupyterhub_ceda_auth.CedaOAuthenticator'
     c.CedaOAuthenticator.oauth_callback_url = 'https://{{ server_name }}/hub/oauth_callback'

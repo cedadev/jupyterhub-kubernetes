@@ -54,6 +54,29 @@
     scp -oStrictHostKeyChecking=no
     {{ groups['kube_masters'][0] }}:/etc/kubernetes/admin.conf /root/.kube/config
 
+- name: Install nfs-provisioner wrapper script
+  copy:
+    content: |
+      #! /usr/bin/env bash
+
+      while true; do
+        curl -o /dev/null -s -I -f -k https://{{ groups['kube_masters'][0] }}:6443
+        status=$?
+        # The curl return code for "failed to connect" is 7
+        # Once we get a return code that is NOT 7, assume the server is up
+        [ $status -ne 7 ] && break
+        echo "Waiting for Kubernetes master to become available..."
+        sleep 5
+      done
+
+      exec /root/go-workspace/bin/nfs-provisioner \
+        -provisioner=kubernetes-incubator/nfs \
+        -kubeconfig=/root/.kube/config \
+        -run-server=false \
+        -use-ganesha=false
+    dest: /usr/local/bin/nfs-provisioner
+    mode: "u=rwx,g=rx,o=rx"
+
 - name: Install systemd unit for NFS provisioner
   copy:
     content: |
@@ -61,11 +84,7 @@
       Description=Kubernetes NFS provisioner
 
       [Service]
-      ExecStart=/root/go-workspace/bin/nfs-provisioner \
-                  -provisioner=kubernetes-incubator/nfs \
-                  -kubeconfig=/root/.kube/config \
-                  -run-server=false \
-                  -use-ganesha=false
+      ExecStart=/usr/local/bin/nfs-provisioner
       Restart=always
 
       [Install]
