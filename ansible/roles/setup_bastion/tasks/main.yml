@@ -18,7 +18,7 @@
 - include: nginx-install-main.yml
 
 - name: Create dashboard-users password file
-  shell: echo "admin:$(openssl passwd -crypt {{ k8s_dashboard_passwd }})" > /etc/nginx/dashboard-users
+  shell: echo "admin:$(openssl passwd -crypt {{ dashboard_password }})" > /etc/nginx/dashboard-users
 
 - name: Set permissions for dashboard-users password file
   file: path=/etc/nginx/dashboard-users owner=www-data group=www-data mode="u=r,g=,o="

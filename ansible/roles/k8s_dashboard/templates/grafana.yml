@@ -21,7 +21,7 @@ metadata:
   namespace: kube-system
 type: Opaque
 data:
-  password: {{ k8s_dashboard_passwd|b64encode }}
+  password: {{ dashboard_password|b64encode }}
 ---
 kind: PersistentVolumeClaim
 apiVersion: v1

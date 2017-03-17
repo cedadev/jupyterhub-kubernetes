@@ -1,5 +1,3 @@
-kubeadm_token: w0b09p.7co13yzm2nlteyb0
-
 storage_device: /dev/sdb
 
 jupyterhub_admins: ['mpryor']
@@ -9,4 +7,4 @@ server_name: "{{ hostvars[groups['bastion_hosts'][0]]['ansible_' + cluster_inter
 use_self_signed_ssl_cert: true
 ssl_cert_subject: /C=GB/ST=Oxfordshire/L=Didcot/O=Science and Technology Facilities Council/OU=Centre for Environmental Data Analysis/CN={{ server_name }}
 
-k8s_dashboard_passwd: Password123
+dashboard_password: Password123
