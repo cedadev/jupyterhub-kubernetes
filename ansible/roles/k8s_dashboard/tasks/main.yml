@@ -1,11 +1,34 @@
 ---
 
-- name: Install Kubernetes Dashboard
-  command: kubectl apply -f https://rawgit.com/kubernetes/dashboard/v1.5.1/src/deploy/kubernetes-dashboard.yaml
+- name: Create manifests directory
+  file: path=/root/manifests state=directory
 
-- name: Ensure Kubernetes dashboard has started
-  shell: kubectl get pods -l app=kubernetes-dashboard -n kube-system -o json | jq '.items | map(.status.containerStatuses) | flatten | map(.ready) | any'
+- name: Copy k8s manifest files
+  template: src={{ item }} dest=/root/manifests/ mode="u=rw,g=,o="
+  with_items:
+    - heapster-storageclass.yml
+    - influxdb.yml
+    - heapster.yml
+    - grafana.yml
+    - kubernetes-dashboard.yml
+
+- name: Install k8s manifests
+  shell: kubectl apply -f /root/manifests/{{ item }} --force
+  with_items:
+    - heapster-storageclass.yml
+    - influxdb.yml
+    - heapster.yml
+    - grafana.yml
+    - kubernetes-dashboard.yml
+
+- name: Ensure Heapster and Kubernetes dashboard have started
+  shell: kubectl get pods -l {{ item }} -n kube-system -o json | jq '.items | map(.status.containerStatuses) | flatten | map(.ready) | all'
   register: result
   until: result.stdout == "true"
   retries: 30
   delay: 10
+  with_items:
+    - "k8s-app=influxdb"
+    - "k8s-app=heapster"
+    - "k8s-app=grafana"
+    - "app=kubernetes-dashboard"

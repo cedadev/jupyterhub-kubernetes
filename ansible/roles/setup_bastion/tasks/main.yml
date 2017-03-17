@@ -17,6 +17,14 @@
 
 - include: nginx-install-main.yml
 
-- include: nginx-install-jupyterhub.yml
+- name: Create dashboard-users password file
+  shell: echo "admin:$(openssl passwd -crypt {{ k8s_dashboard_passwd }})" > /etc/nginx/dashboard-users
 
-- include: nginx-install-k8s-dashboard.yml
+- name: Set permissions for dashboard-users password file
+  file: path=/etc/nginx/dashboard-users owner=www-data group=www-data mode="u=r,g=,o="
+
+- include: nginx-install-proxy.yml  service={{ item }}
+  with_items:
+    - { name: jupyterhub, namespace: default, port: 443, basic_auth: false }
+    - { name: monitoring-grafana, namespace: kube-system, port: 8001, basic_auth: false }
+    - { name: kubernetes-dashboard, namespace: kube-system, port: 8002, basic_auth: true }

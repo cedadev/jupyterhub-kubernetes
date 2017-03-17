@@ -49,5 +49,8 @@
 - name: Remove default site
   file: path=/etc/nginx/sites-enabled/default state=absent
 
+- name: Redirect http -> https
+  template: src=http_redirect.nginx.conf dest=/etc/nginx/sites-enabled/http_redirect
+
 - name: Ensure nginx starts at boot time
   service: name=nginx enabled=yes
