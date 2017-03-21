@@ -1,0 +1,57 @@
+---
+
+- name: Force new machine id
+  shell: rm /etc/machine-id /var/lib/dbus/machine-id && systemd-machine-id-setup
+  args:
+    creates: /root/.ansible-machine-id
+
+- name: Create .ansible-machine-id file
+  copy:
+    content: "Created {{ ansible_date_time.date }} {{ ansible_date_time.time }}"
+    dest: /root/.ansible-machine-id
+    mode: "u=rw,g=,o="
+
+- name: Add cluster IPs on correct interface to /etc/hosts
+  lineinfile:
+    dest: /etc/hosts
+    line: "{{ hostvars[item]['ansible_' + cluster_interface].ipv4.address }} {{ item }}"
+    insertbefore: BOF
+    regexp: "{{ item }}$"
+  with_items: "{{ groups['all'] }}"
+
+# Make sure to do hosts.deny first! Or we might block ourselves out...
+- name: Ensure permissive hosts.deny
+  copy:
+    content: |
+      # /etc/hosts.deny: list of hosts that are _not_ allowed to access the system.
+      #                  See the manual pages hosts_access(5) and hosts_options(5).
+      #
+      # Example:    ALL: some.host.name, .some.domain
+      #             ALL EXCEPT in.fingerd: other.host.name, .other.domain
+      #
+      # If you're going to protect the portmapper use the name "rpcbind" for the
+      # daemon name. See rpcbind(8) and rpc.mountd(8) for further information.
+      #
+      # The PARANOID wildcard matches any host whose name does not match its
+      # address.
+      #
+      # You may wish to enable this to ensure any programs that don't
+      # validate looked up hostnames still leave understandable logs. In past
+      # versions of Debian this has been the default.
+      # ALL: PARANOID
+      #
+    dest: /etc/hosts.deny
+
+- name: Ensure permissive hosts.allow
+  copy:
+    content: |
+      # /etc/hosts.allow: list of hosts that are allowed to access the system.
+      #                   See the manual pages hosts_access(5) and hosts_options(5).
+      #
+      # Example:    ALL: LOCAL @some_netgroup
+      #             ALL: .foobar.edu EXCEPT terminalserver.foobar.edu
+      #
+      # If you're going to protect the portmapper use the name "rpcbind" for the
+      # daemon name. See rpcbind(8) and rpc.mountd(8) for further information.
+      #
+    dest: /etc/hosts.allow

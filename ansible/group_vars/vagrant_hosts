@@ -1,3 +1,5 @@
+artifact_namespace: vagrant
+
 storage_device: /dev/sdb
 
 jupyterhub_admins: ['mpryor']

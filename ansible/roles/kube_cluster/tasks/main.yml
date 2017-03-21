@@ -1,5 +1,8 @@
 ---
 
+- name: Install NFS client on all nodes
+  apt: update_cache=yes name=nfs-common state=latest
+
 - name: Add apt repository key for Kubernetes repo
   apt_key:
     url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
@@ -28,9 +31,17 @@
   register: kubeadm_init
   when: inventory_hostname in groups['kube_masters']
 
-- name: Update proxy-mode for proxy pods
-  shell: "kubectl -n kube-system get ds -l 'component=kube-proxy' -o json | jq '.items[0].spec.template.spec.containers[0].command |= .+ [\"--proxy-mode=userspace\"]' | kubectl apply -f - && kubectl -n kube-system delete pods -l 'component=kube-proxy'"
-  when: kubeadm_init|changed and inventory_hostname in groups['kube_masters']
+- name: Install pod network
+  command: kubectl apply -f https://git.io/weave-kube
+  when: inventory_hostname in groups['kube_masters']
+
+- name: Ensure kube-dns has started
+  shell: kubectl get pods -l k8s-app=kube-dns -n kube-system -o json | jq '.items | map(.status.containerStatuses) | flatten | map(.ready) | all'
+  register: result
+  until: result.stdout == "true"
+  retries: 30
+  delay: 10
+  when: inventory_hostname in groups['kube_masters']
 
 - name: Get kubeadm token
   shell: >
@@ -57,14 +68,16 @@
     creates: /etc/kubernetes/kubelet.conf
   when: inventory_hostname in groups['kube_nodes']
 
-- name: Install pod network
-  command: kubectl apply -f https://git.io/weave-kube
-  when: inventory_hostname in groups['kube_masters']
+- name: Make local artifacts directory
+  file: path={{ playbook_dir }}/.artifacts/{{ artifact_namespace }} state=directory
+  delegate_to: 127.0.0.1
 
-- name: Ensure kube-dns has started
-  shell: kubectl get pods -l k8s-app=kube-dns -n kube-system -o json | jq '.items | map(.status.containerStatuses) | flatten | map(.ready) | any'
-  register: result
-  until: result.stdout == "true"
-  retries: 30
-  delay: 10
+- name: Retrieve kubectl binary and Kubernetes admin config
+  fetch:
+    src: "{{ item.src }}"
+    dest: "{{ playbook_dir }}/.artifacts/{{ artifact_namespace }}/{{ item.dest }}"
+    flat: yes
+  with_items:
+    - { src: /usr/bin/kubectl, dest: kubectl }
+    - { src: /etc/kubernetes/admin.conf, dest: kubernetes-admin.conf }
   when: inventory_hostname in groups['kube_masters']

@@ -30,15 +30,15 @@ Vagrant.configure(2) do |config|
   config.ssh.forward_agent = true
 
   config.vm.provider :virtualbox do |vb|
-    vb.customize ["modifyvm", :id, "--memory", "2048"]
+    vb.memory = 2048
   end
 
   # Allow root login with same key as vagrant user
   config.vm.provision :shell, inline: <<-SHELL
-  echo "Copying SSH key to root..."
-  mkdir -p /root/.ssh
-  cp ~vagrant/.ssh/authorized_keys /root/.ssh
-  SHELL
+echo "Copying SSH key to root..."
+mkdir -p /root/.ssh
+cp ~vagrant/.ssh/authorized_keys /root/.ssh
+SHELL
 
   config.vm.define "bastion" do |bastion|
     bastion.vm.hostname = "bastion"
@@ -51,8 +51,8 @@ Vagrant.configure(2) do |config|
 
     # Give the node an extra disk for /export
     vdi_file = "./.vagrant/machines/nfs-server/disk0.vdi"
-    nfs.vm.provider :virtualbox do |vb|
-      unless File.exist?(vdi_file)
+    unless File.exist?(vdi_file)
+      nfs.vm.provider :virtualbox do |vb|
         vb.customize [ 'createhd',
                        '--filename', vdi_file,
                        '--size', 100 * 1024 ]
@@ -69,6 +69,10 @@ Vagrant.configure(2) do |config|
   config.vm.define "kube-master" do |master|
     master.vm.hostname = "kube-master"
     master.vm.network "private_network", ip: "172.28.128.102"
+
+    master.vm.provider :virtualbox do |vb|
+      vb.cpus = 2
+    end
   end
 
   (0..N_NODES-1).each do |n|
@@ -80,12 +84,8 @@ Vagrant.configure(2) do |config|
       if n == (N_NODES-1)
         # On the final node (i.e. when all the machines in the cluster have started)
         # we run the playbooks
-#        node.vm.provision "ansible-update-packages", type: "ansible" do |ansible|
-#          ansible.playbook = "ansible/update_packages.yml"
-#          ansible_kube_common(ansible)
-#        end
-        node.vm.provision "ansible-setup-etc-hosts", type: "ansible" do |ansible|
-          ansible.playbook = "ansible/setup_etc_hosts.yml"
+        node.vm.provision "ansible-setup-networking", type: "ansible" do |ansible|
+          ansible.playbook = "ansible/setup_networking.yml"
           ansible_kube_common(ansible)
         end
         node.vm.provision "ansible-k8s-cluster", type: "ansible" do |ansible|

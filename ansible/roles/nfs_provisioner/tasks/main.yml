@@ -49,10 +49,10 @@
 - name: Make kube config directory
   file: path=/root/.kube state=directory
 
-- name: Pull kubernetes config file from kube-master
-  shell: >
-    scp -oStrictHostKeyChecking=no
-    {{ groups['kube_masters'][0] }}:/etc/kubernetes/admin.conf /root/.kube/config
+- name: Upload Kubernetes config
+  copy:
+    src: "{{ playbook_dir }}/.artifacts/{{ artifact_namespace }}/kubernetes-admin.conf"
+    dest: /root/.kube/config
 
 - name: Install nfs-provisioner wrapper script
   copy:
@@ -91,5 +91,5 @@
       WantedBy=multi-user.target
     dest: /lib/systemd/system/nfs-provisioner.service
 
-- name: Ensure nfs-provisioner is started
-  service: name=nfs-provisioner state=started enabled=yes
+- name: Ensure nfs-provisioner is restarted
+  service: name=nfs-provisioner state=restarted enabled=yes

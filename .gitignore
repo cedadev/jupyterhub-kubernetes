@@ -2,5 +2,4 @@
 *.retry
 .dockerhub-credentials.yml
 venv
-*.vdi
-.kubeadm-join-cmd
+.artifacts

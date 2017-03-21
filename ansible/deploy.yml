@@ -1,8 +1,0 @@
----
-
-- include: setup_etc_hosts.yml
-- include: k8s_cluster.yml
-- include: nfs_provisioner.yml
-- include: k8s_dashboard.yml
-- include: jupyterhub_k8s.yml
-- include: setup_bastion.yml

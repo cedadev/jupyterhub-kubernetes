@@ -4,13 +4,14 @@
   file: path=/root/.kube state=directory
 
 # We do this by copying kubectl and the admin.conf from the kube-master
-- name: Configure kubectl
-  shell: scp -oStrictHostKeyChecking=no {{ groups['kube_masters'][0] }}:{{ item.src }} {{ item.dest }}
-  args:
-    creates: "{{ item.dest }}"
+- name: Upload kubectl and Kubernetes config
+  copy:
+    src: "{{ playbook_dir }}/.artifacts/{{ artifact_namespace }}/{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: "{{ item.mode }}"
   with_items:
-    - { src: /usr/bin/kubectl, dest: /usr/local/bin/kubectl }
-    - { src: /etc/kubernetes/admin.conf, dest: /root/.kube/config }
+    - { src: kubectl, dest: /usr/local/bin/kubectl, mode: "u=rwx,g=rx,o=rx" }
+    - { src: kubernetes-admin.conf, dest: /root/.kube/config, mode: "u=rw,g=,o=" }
 
 - name: Install jq
   apt: name=jq state=latest
