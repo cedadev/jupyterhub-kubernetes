@@ -2,6 +2,8 @@ artifact_namespace: vagrant
 
 storage_device: /dev/sdb
 
+use_userspace_proxy: true
+
 jupyterhub_admins: ['mpryor']
 
 server_name: "{{ hostvars[groups['bastion_hosts'][0]]['ansible_' + cluster_interface].ipv4.address }}"

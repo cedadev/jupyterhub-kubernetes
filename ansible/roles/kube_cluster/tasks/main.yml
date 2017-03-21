@@ -31,6 +31,15 @@
   register: kubeadm_init
   when: inventory_hostname in groups['kube_masters']
 
+- name: Update proxy-mode for proxy pods
+  shell:
+    kubectl -n kube-system get ds -l k8s-app=kube-proxy -o json | \
+      jq '.items[0].spec.template.spec.containers[0].command |= .+ ["--proxy-mode=userspace"]' | \
+      kubectl apply -f - && \
+    kubectl -n kube-system delete pods -l k8s-app=kube-proxy
+  when: use_userspace_proxy is defined and use_userspace_proxy and
+        kubeadm_init|changed and inventory_hostname in groups['kube_masters']
+
 - name: Install pod network
   command: kubectl apply -f https://git.io/weave-kube
   when: inventory_hostname in groups['kube_masters']
