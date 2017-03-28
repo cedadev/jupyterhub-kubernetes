@@ -96,8 +96,8 @@ SHELL
           ansible.playbook = "ansible/nfs_provisioner.yml"
           ansible_kube_common(ansible)
         end
-        node.vm.provision "ansible-k8s-dashboard", type: "ansible" do |ansible|
-          ansible.playbook = "ansible/k8s_dashboard.yml"
+        node.vm.provision "ansible-k8s-monitoring", type: "ansible" do |ansible|
+          ansible.playbook = "ansible/k8s_monitoring.yml"
           ansible_kube_common(ansible)
         end
         node.vm.provision "ansible-jupyterhub-k8s", type: "ansible" do |ansible|

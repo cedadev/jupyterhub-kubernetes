@@ -4,4 +4,4 @@
   remote_user: root
   force_handlers: yes
   roles:
-    - k8s_dashboard
+    - k8s_monitoring

@@ -6,7 +6,10 @@
 - name: Copy k8s manifest files
   template: src={{ item }} dest=/root/manifests/ mode="u=rw,g=,o="
   with_items:
-    - heapster-storageclass.yml
+    - monitoring-storage.yml
+    - elasticsearch.yml
+    - fluentd.yml
+    - kibana.yml
     - influxdb.yml
     - heapster.yml
     - grafana.yml
@@ -15,19 +18,25 @@
 - name: Install k8s manifests
   shell: kubectl apply -f /root/manifests/{{ item }} --force
   with_items:
-    - heapster-storageclass.yml
+    - monitoring-storage.yml
+    - elasticsearch.yml
+    - fluentd.yml
+    - kibana.yml
     - influxdb.yml
     - heapster.yml
     - grafana.yml
     - kubernetes-dashboard.yml
 
-- name: Ensure Heapster and Kubernetes dashboard have started
+- name: Ensure monitoring tools have started
   shell: kubectl get pods -l {{ item }} -n kube-system -o json | jq '.items | map(.status.containerStatuses) | flatten | map(.ready) | all'
   register: result
   until: result.stdout == "true"
   retries: 30
   delay: 10
   with_items:
+    - "k8s-app=elasticsearch-logging"
+    - "k8s-app=fluentd-es"
+    - "k8s-app=kibana-logging"
     - "k8s-app=influxdb"
     - "k8s-app=heapster"
     - "k8s-app=grafana"

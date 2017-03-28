@@ -16,16 +16,28 @@
 - name: Install jq
   apt: name=jq state=latest
 
-- include: nginx-install-main.yml
+- name: Install nginx
+  apt: name=nginx state=latest
+  notify:
+    - Restart nginx
 
-- name: Create dashboard-users password file
-  shell: echo "admin:$(openssl passwd -crypt {{ dashboard_password }})" > /etc/nginx/dashboard-users
+- name: Create nginx certificate directory
+  file: path=/etc/nginx/certs state=directory
 
-- name: Set permissions for dashboard-users password file
-  file: path=/etc/nginx/dashboard-users owner=www-data group=www-data mode="u=r,g=,o="
+- name: Create nginx tcpconf.d directory
+  file: path=/etc/nginx/tcpconf.d state=directory
 
-- include: nginx-install-proxy.yml  service={{ item }}
-  with_items:
-    - { name: jupyterhub, namespace: default, port: 443, basic_auth: false }
-    - { name: monitoring-grafana, namespace: kube-system, port: 8001, basic_auth: false }
-    - { name: kubernetes-dashboard, namespace: kube-system, port: 8002, basic_auth: true }
+- name: Install main nginx configuration
+  copy: src=files/nginx.conf dest=/etc/nginx/nginx.conf
+  notify:
+    - Restart nginx
+
+- name: Remove default site
+  file: path=/etc/nginx/sites-enabled/default state=absent
+  notify:
+    - Restart nginx
+
+- name: Ensure nginx starts at boot time
+  service: name=nginx enabled=yes
+
+- include: nginx-jupyterhub.yml

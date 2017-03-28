@@ -1,13 +1,5 @@
 ---
 
-- name: Install nginx
-  apt: name=nginx state=latest
-  notify:
-    - Restart nginx
-
-- name: Create nginx certificate directory
-  file: path=/etc/nginx/certs state=directory
-
 - name: Generate self-signed SSL certificate
   command: >
     openssl req -new -nodes -x509 -subj "{{ ssl_cert_subject }}" -days 3650
@@ -41,16 +33,11 @@
     - key
     - pem
 
-- name: Install main nginx configuration
-  copy: src=files/nginx.conf dest=/etc/nginx/nginx.conf
+- name: Get JupyterHub NodePort
+  shell: kubectl get svc/jupyterhub -o json | jq '.spec.ports[0].nodePort'
+  register: nodeport
+
+- name: Write JupyterHub proxy config
+  template: src=jupyterhub.nginx.conf dest=/etc/nginx/sites-enabled/jupyterhub
   notify:
     - Restart nginx
-
-- name: Remove default site
-  file: path=/etc/nginx/sites-enabled/default state=absent
-
-- name: Redirect http -> https
-  template: src=http_redirect.nginx.conf dest=/etc/nginx/sites-enabled/http_redirect
-
-- name: Ensure nginx starts at boot time
-  service: name=nginx enabled=yes

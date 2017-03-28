@@ -14,20 +14,6 @@ spec:
   selector:
     k8s-app: influxdb
 ---
-kind: PersistentVolumeClaim
-apiVersion: v1
-metadata:
-  name: influxdb-storage
-  namespace: kube-system
-  annotations:
-    volume.beta.kubernetes.io/storage-class: "heapster-storage"
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 5Gi
----
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:

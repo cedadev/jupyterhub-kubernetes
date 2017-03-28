@@ -23,20 +23,6 @@ type: Opaque
 data:
   password: {{ dashboard_password|b64encode }}
 ---
-kind: PersistentVolumeClaim
-apiVersion: v1
-metadata:
-  name: grafana-storage
-  namespace: kube-system
-  annotations:
-    volume.beta.kubernetes.io/storage-class: "heapster-storage"
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 5Gi
----
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:

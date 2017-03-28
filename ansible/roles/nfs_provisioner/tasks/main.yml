@@ -37,6 +37,7 @@
 - name: Fetch github.com/kubernetes-incubator/external-storage repo
   git:
     repo: https://github.com/kubernetes-incubator/external-storage.git
+    version: 71ed7068013a2f55eaa31346fdff0c3c545e0f1b
     dest: /root/go-workspace/src/github.com/kubernetes-incubator/external-storage
 
 - name: Build nfs-provisioner
