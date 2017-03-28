@@ -10,5 +10,3 @@ server_name: "{{ hostvars[groups['bastion_hosts'][0]]['ansible_' + cluster_inter
 
 use_self_signed_ssl_cert: true
 ssl_cert_subject: /C=GB/ST=Oxfordshire/L=Didcot/O=Science and Technology Facilities Council/OU=Centre for Environmental Data Analysis/CN={{ server_name }}
-
-dashboard_password: Password123
