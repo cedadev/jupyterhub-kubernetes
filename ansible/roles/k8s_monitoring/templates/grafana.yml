@@ -7,21 +7,11 @@ metadata:
   name: monitoring-grafana
   namespace: kube-system
 spec:
-  type: NodePort
   ports:
     - port: 80
       targetPort: 3000
   selector:
     k8s-app: grafana
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: grafana-admin
-  namespace: kube-system
-type: Opaque
-data:
-  password: {{ dashboard_password|b64encode }}
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -51,21 +41,11 @@ spec:
             - name: GRAFANA_PORT
               value: "3000"
             - name: GF_AUTH_BASIC_ENABLED
-              value: "true"
-            - name: GF_AUTH_ANONYMOUS_ENABLED
               value: "false"
-            - name: GF_SECURITY_ADMIN_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: grafana-admin
-                  key: password
-            - name: GRAFANA_PASSWD
-              valueFrom:
-                secretKeyRef:
-                  name: grafana-admin
-                  key: password
+            - name: GF_AUTH_ANONYMOUS_ENABLED
+              value: "true"
             - name: GF_SERVER_ROOT_URL
-              value: /
+              value: /api/v1/proxy/namespaces/kube-system/services/monitoring-grafana
       volumes:
         - name: grafana-storage
           persistentVolumeClaim:
