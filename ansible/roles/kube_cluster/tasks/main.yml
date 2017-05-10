@@ -18,7 +18,7 @@
   apt: update_cache=yes name={{ item }} state=latest
   with_items:
     - jq
-    - docker.io
+    - docker-engine
     - kubelet
     - kubeadm
     - kubectl
@@ -41,11 +41,13 @@
         kubeadm_init|changed and inventory_hostname in groups['kube_masters']
 
 - name: Install pod network
-  command: kubectl apply -f https://git.io/weave-kube
+  command: kubectl apply -f https://git.io/weave-kube-1.6
   when: inventory_hostname in groups['kube_masters']
 
 - name: Ensure kube-dns has started
-  shell: kubectl get pods -l k8s-app=kube-dns -n kube-system -o json | jq '.items | map(.status.containerStatuses) | flatten | map(.ready) | all'
+  shell: >
+    kubectl get pods -l k8s-app=kube-dns -n kube-system -o json |  \
+      jq '.items | map(.status.containerStatuses) | flatten | map(.ready) | all'
   register: result
   until: result.stdout == "true"
   retries: 30
@@ -53,11 +55,7 @@
   when: inventory_hostname in groups['kube_masters']
 
 - name: Get kubeadm token
-  shell: >
-    kubectl -n kube-system get secret clusterinfo -o json | \
-      jq -r '.data["token-map.json"]' | \
-      base64 -d | \
-      jq -r 'to_entries[0] | .key + "." + .value'
+  shell: kubeadm token list | sed -n 2p | awk '{ print $1 };'
   register: kubeadm_token
   when: inventory_hostname in groups['kube_masters']
 
@@ -72,7 +70,7 @@
   when: inventory_hostname in groups['kube_nodes']
 
 - name: Join Kubernetes cluster (preflight checks skipped due to https://github.com/kubernetes/kubeadm/issues/6)
-  command: kubeadm join --skip-preflight-checks --token={{ kubeadm_token }} {{ kube_master_ip }}
+  command: kubeadm join --skip-preflight-checks --token={{ kubeadm_token }} {{ kube_master_ip }}:6443
   args:
     creates: /etc/kubernetes/kubelet.conf
   when: inventory_hostname in groups['kube_nodes']

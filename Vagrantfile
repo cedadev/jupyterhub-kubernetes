@@ -84,8 +84,8 @@ SHELL
       if n == (N_NODES-1)
         # On the final node (i.e. when all the machines in the cluster have started)
         # we run the playbooks
-        node.vm.provision "ansible-setup-networking", type: "ansible" do |ansible|
-          ansible.playbook = "ansible/setup_networking.yml"
+        node.vm.provision "ansible-common-setup", type: "ansible" do |ansible|
+          ansible.playbook = "ansible/common_setup.yml"
           ansible_kube_common(ansible)
         end
         node.vm.provision "ansible-k8s-cluster", type: "ansible" do |ansible|

@@ -9,3 +9,5 @@
   force_handlers: yes
   roles:
     - jupyterhub_k8s
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf

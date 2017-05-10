@@ -10,6 +10,7 @@
     content: "Created {{ ansible_date_time.date }} {{ ansible_date_time.time }}"
     dest: /root/.ansible-machine-id
     mode: "u=rw,g=,o="
+    force: no
 
 - name: Add cluster IPs on correct interface to /etc/hosts
   lineinfile:

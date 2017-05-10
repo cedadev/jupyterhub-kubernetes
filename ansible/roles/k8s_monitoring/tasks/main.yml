@@ -13,19 +13,18 @@
     - influxdb.yml
     - heapster.yml
     - grafana.yml
-    - kubernetes-dashboard.yml
 
 - name: Install k8s manifests
-  shell: kubectl apply -f /root/manifests/{{ item }} --force
+  shell: kubectl apply -f {{ item }} --force
   with_items:
-    - monitoring-storage.yml
-    - elasticsearch.yml
-    - fluentd.yml
-    - kibana.yml
-    - influxdb.yml
-    - heapster.yml
-    - grafana.yml
-    - kubernetes-dashboard.yml
+    - /root/manifests/monitoring-storage.yml
+    - /root/manifests/elasticsearch.yml
+    - /root/manifests/fluentd.yml
+    - /root/manifests/kibana.yml
+    - /root/manifests/influxdb.yml
+    - /root/manifests/heapster.yml
+    - /root/manifests/grafana.yml
+    - https://git.io/kube-dashboard
 
 - name: Ensure monitoring tools have started
   shell: kubectl get pods -l {{ item }} -n kube-system -o json | jq '.items | map(.status.containerStatuses) | flatten | map(.ready) | all'

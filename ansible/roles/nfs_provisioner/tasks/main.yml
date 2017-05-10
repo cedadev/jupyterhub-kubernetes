@@ -1,25 +1,7 @@
 ---
 
-- name: Check if storage device has been partitioned
-  stat: path={{ storage_partition }}
-  register: stat
-
-- name: Make primary partition on storage device
-  shell: parted -s -a opt {{ storage_device }} mklabel gpt -- mkpart primary ext4 1 -1
-  when: not stat.stat.exists
-
-- name: Create filesystem on primary partition
-  filesystem:
-    dev: "{{ storage_partition }}"
-    fstype: ext4
-    resizefs: yes
-
-- name: Mount storage device
-  mount:
-    name: /export
-    src: "{{ storage_partition }}"
-    state: mounted
-    fstype: ext4
+- name: Make export directory
+  file: path=/export state=directory
 
 - name: Install NFS server
   apt: update_cache=yes name=nfs-kernel-server state=latest

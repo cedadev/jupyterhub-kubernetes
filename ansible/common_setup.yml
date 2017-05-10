@@ -5,3 +5,4 @@
   force_handlers: yes
   roles:
     - setup_networking
+    - setup_storage

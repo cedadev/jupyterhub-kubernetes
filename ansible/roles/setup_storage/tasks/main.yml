@@ -1,0 +1,29 @@
+---
+# If the named storage device exists on the server, this role adds it to the LVM
+# logical volume for the root filesystem
+
+- name: Check if storage device exists
+  stat: path={{ storage_device }}
+  register: stat_device
+
+- name: Check if device has already been added to LVM
+  shell: pvscan | grep {{ storage_device }}
+  register: pvscan
+  when: stat_device.stat.exists
+  failed_when: "pvscan.rc < 0 or pvscan.rc > 1"
+
+- name: Create LVM physical volume from storage device
+  command: pvcreate {{ storage_device }}
+  when: stat_device.stat.exists and pvscan.rc == 1
+
+- name: Extend LVM volume group with physical volume
+  command: vgextend {{ volume_group }} {{ storage_device }}
+  when: stat_device.stat.exists and pvscan.rc == 1
+
+- name: Extend LVM volume to fill volume group
+  command: lvextend -l +100%FREE /dev/{{ volume_group }}/root
+  when: stat_device.stat.exists and pvscan.rc == 1
+
+- name: Resize root filesystem to fill volume
+  command: resize2fs /dev/{{ volume_group }}/root
+  when: stat_device.stat.exists and pvscan.rc == 1

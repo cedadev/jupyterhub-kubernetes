@@ -13,6 +13,26 @@ spec:
   selector:
     jupyterhub: hub-service
 ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jupyterhub
+  namespace: default
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: jupyterhub
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+subjects:
+  - kind: ServiceAccount
+    name: jupyterhub
+    namespace: default
+---
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
@@ -52,7 +72,7 @@ data:
     c.JupyterHub.db_url = '/var/run/jupyterhub/jupyterhub.sqlite'
     c.JupyterHub.spawner_class = 'kubespawner.KubeSpawner'
     c.KubeSpawner.namespace = os.environ.get('POD_NAMESPACE', 'default')
-    c.KubeSpawner.start_timeout = 60 * 5  # Upto 5 minutes, first pulls can be really slow
+    c.KubeSpawner.start_timeout = 60 * 10  # First pulls can be really slow
     c.KubeSpawner.hub_connect_ip = os.environ['JUPYTERHUB_SERVICE_HOST']
     c.KubeSpawner.hub_connect_port = int(os.environ['JUPYTERHUB_SERVICE_PORT'])
     c.KubeSpawner.singleuser_image_spec = '{{ singleuser_image }}'
@@ -77,13 +97,14 @@ data:
     c.KubeSpawner.volume_mounts = [
         {
             'name' : 'notebook-volume',
-            'mountPath' : '/home/jovyan/work',
+            'mountPath' : '/notebooks',
         },
         {
             'name' : 'public-notebook-volume',
-            'mountPath' : '/home/jovyan/work/public',
+            'mountPath' : '/notebooks/public',
         },
     ]
+    c.KubeSpawner.singleuser_working_dir = '/notebooks'
 {% if ceda_oauth_client_id is defined %}
     c.JupyterHub.authenticator_class = 'jupyterhub_ceda_auth.CedaOAuthenticator'
     c.CedaOAuthenticator.oauth_callback_url = 'https://{{ server_name }}/hub/oauth_callback'
@@ -125,6 +146,7 @@ spec:
         app: jupyterhub
         jupyterhub: hub-service
     spec:
+      serviceAccountName: jupyterhub
       containers:
         - name: jupyterhub
           image: {{ jupyterhub_image }}

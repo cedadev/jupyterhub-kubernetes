@@ -1,6 +1,7 @@
 artifact_namespace: vagrant
 
 storage_device: /dev/sdb
+volume_group: vagrant-vg
 
 use_userspace_proxy: true
 

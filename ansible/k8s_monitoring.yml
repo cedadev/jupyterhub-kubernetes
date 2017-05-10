@@ -5,3 +5,5 @@
   force_handlers: yes
   roles:
     - k8s_monitoring
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf

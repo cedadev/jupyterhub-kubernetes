@@ -5,3 +5,5 @@
   force_handlers: yes
   roles:
     - kube_cluster
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf

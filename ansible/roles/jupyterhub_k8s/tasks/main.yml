@@ -7,13 +7,6 @@
 - name: Install pip for system Python
   apt: update_cache=yes name=python-pip state=latest
 
-- name: Install docker-py
-  pip: name=docker-py state=latest
-
-- name: Pre-pull notebook image onto nodes
-  docker_image: name={{ singleuser_image }}
-  when: inventory_hostname in groups['kube_nodes']
-
 - name: Create manifests directory
   file: path=/root/manifests state=directory
   when: inventory_hostname in groups['kube_masters']

@@ -1,1 +1,3 @@
 storage_partition: "{{ storage_device }}1"
+
+volume_group: ubuntu-vg
