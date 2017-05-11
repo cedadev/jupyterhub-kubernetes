@@ -41,6 +41,9 @@ spec:
               mountPath: /var/lib/docker/containers
               readOnly: true
       terminationGracePeriodSeconds: 30
+      tolerations:
+        - key : "node.alpha.kubernetes.io/ismaster"
+          effect: "NoSchedule"
       volumes:
         - name: varlog
           hostPath:
