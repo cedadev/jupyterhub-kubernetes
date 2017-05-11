@@ -17,9 +17,28 @@ spec:
     k8s-app: elasticsearch-logging
 ---
 apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: elasticsearch
+  namespace: kube-system
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: elasticsearch
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: elasticsearch
+    namespace: kube-system
+---
+apiVersion: v1
 kind: ReplicationController
 metadata:
-  name: elasticsearch-logging
+  name: elasticsearch-logging-v1
   namespace: kube-system
   labels:
     k8s-app: elasticsearch-logging
@@ -38,6 +57,7 @@ spec:
         version: v1
         kubernetes.io/cluster-service: "true"
     spec:
+      serviceAccountName: elasticsearch
       containers:
         - image: gcr.io/google_containers/elasticsearch:v2.4.1-2
           name: elasticsearch-logging
@@ -64,5 +84,4 @@ spec:
                   fieldPath: metadata.namespace
       volumes:
         - name: es-persistent-storage
-          persistentVolumeClaim:
-            claimName: elasticsearch-storage
+          emptyDir: {}
