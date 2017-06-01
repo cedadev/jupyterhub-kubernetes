@@ -6,7 +6,7 @@ USER root
 ENV CONDA_DIR /opt/conda
 ENV PATH $CONDA_DIR/bin:$PATH
 ENV SHELL /bin/bash
-ENV NB_USER jovyan
+ENV NB_USER notebook
 ENV NB_UID 1000
 ENV HOME /home/$NB_USER
 
@@ -34,8 +34,8 @@ RUN cd /tmp &&  \
 RUN conda install --quiet --yes notebook jupyterhub jupyterlab &&  \
     conda clean -tipsy
 
-# Install the nbexamples extension
-RUN pip install git+https://github.com/danielballan/nbexamples.git &&  \
+# Install the CEDA-customised nbexamples extension
+RUN pip install git+https://github.com/cedadev/nbexamples.git &&  \
     jupyter nbextension install --py nbexamples --user &&  \
     jupyter nbextension enable --py nbexamples --user &&  \
     jupyter serverextension enable --py nbexamples --user
@@ -82,6 +82,7 @@ RUN curl -s https://raw.githubusercontent.com/jupyter/docker-stacks/master/base-
     curl -s https://raw.githubusercontent.com/jupyter/docker-stacks/master/base-notebook/jupyter_notebook_config.py  \
       > /etc/jupyter/jupyterhub_notebook_config.py &&  \
     chown -R $NB_USER:users /etc/jupyter
+COPY start-singleuser-nbexamples.sh /usr/local/bin/
 
 # Switch back to notebook user to avoid accidental container runs as root
 USER $NB_USER
@@ -94,5 +95,5 @@ RUN mkdir -p $HOME/.ipython/profile_default/startup &&  \
 EXPOSE 8888
 
 # Make sure the singleuser script is present
-RUN sh /usr/local/bin/start-singleuser.sh --help-all
-CMD ["sh", "/usr/local/bin/start-singleuser.sh"]
+RUN sh /usr/local/bin/start-singleuser-nbexamples.sh --help-all
+CMD ["sh", "/usr/local/bin/start-singleuser-nbexamples.sh"]
