@@ -1,5 +1,5 @@
-jupyterhub_image_prefix: mkjpryor
+jupyterhub_image_prefix: cedadev
 jupyterhub_image_name: jasmin-jupyterhub
 jupyterhub_image_version: latest
 jupyterhub_image: "{{ jupyterhub_image_prefix }}/{{ jupyterhub_image_name }}:{{ jupyterhub_image_version }}"
-singleuser_image: jupyterhub/singleuser:0.7.0
+singleuser_image: cedadev/jasmin-notebook:latest

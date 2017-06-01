@@ -49,12 +49,25 @@ spec:
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: public-notebooks
+  name: unreviewed-examples
   annotations:
     volume.beta.kubernetes.io/storage-class: "notebook-storage"
 spec:
   accessModes:
     - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: reviewed-examples
+  annotations:
+    volume.beta.kubernetes.io/storage-class: "notebook-storage"
+spec:
+  accessModes:
+    - ReadOnlyMany
   resources:
     requests:
       storage: 1Gi
@@ -76,7 +89,15 @@ data:
     c.KubeSpawner.hub_connect_ip = os.environ['JUPYTERHUB_SERVICE_HOST']
     c.KubeSpawner.hub_connect_port = int(os.environ['JUPYTERHUB_SERVICE_PORT'])
     c.KubeSpawner.singleuser_image_spec = '{{ singleuser_image }}'
+    c.KubeSpawner.cmd = [
+        "sh",
+        "/usr/local/bin/start-singleuser.sh",
+        "--Examples.reviewed_example_dir='/example-notebooks/reviewed'",
+        "--Examples.unreviewed_example_dir='/example-notebooks/unreviewed'",
+    ]
+    c.KubeSpawner.singleuser_uid = 1000
     # Each user gets their own persistentVolumeClaim
+    c.KubeSpawner.user_storage_pvc_ensure = True
     c.KubeSpawner.pvc_name_template = 'claim-{username}-{userid}'
     c.KubeSpawner.user_storage_capacity = '1Gi'
     c.KubeSpawner.user_storage_class = 'notebook-storage'
@@ -88,9 +109,15 @@ data:
             },
         },
         {
-            'name' : 'public-notebook-volume',
+            'name' : 'unreviewed-examples-volume',
             'persistentVolumeClaim' : {
-                'claimName' : 'public-notebooks',
+                'claimName' : 'unreviewed-examples',
+            },
+        },
+        {
+            'name' : 'reviewed-examples-volume',
+            'persistentVolumeClaim' : {
+                'claimName' : 'reviewed-examples',
             },
         },
     ]
@@ -100,8 +127,12 @@ data:
             'mountPath' : '/notebooks',
         },
         {
-            'name' : 'public-notebook-volume',
-            'mountPath' : '/notebooks/public',
+            'name' : 'unreviewed-examples-volume',
+            'mountPath' : '/example-notebooks/unreviewed',
+        },
+        {
+            'name' : 'reviewed-examples-volume',
+            'mountPath' : '/example-notebooks/reviewed',
         },
     ]
     c.KubeSpawner.singleuser_working_dir = '/notebooks'
