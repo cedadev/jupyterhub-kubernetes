@@ -92,7 +92,7 @@ data:
     c.KubeSpawner.environment = {
         "NBEXAMPLES_REVIEWED_DIR" : "/example-notebooks/reviewed",
         "NBEXAMPLES_UNREVIEWED_DIR" : "/example-notebooks/unreviewed",
-    ]}
+    }
     c.KubeSpawner.singleuser_uid = 1000
     # Each user gets their own persistentVolumeClaim
     c.KubeSpawner.user_storage_pvc_ensure = True
